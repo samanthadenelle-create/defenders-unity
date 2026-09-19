@@ -161,6 +161,9 @@ namespace DeNelle.Editor
         // is the shape this block wants; the remove-by forces a re-read if entries come back.
         private static readonly HashSet<string> Allowlist = new HashSet<string>(StringComparer.Ordinal)
         {
+            // WO-1876 2026-09-19 remove-by 2026-12-19 — rebuild door retired; castle
+            // HudKit is the player path. Harnesses still AddComponent it for photos.
+            "OwnedTownPanel",
         };
 
         // A panel-like type and where it was declared.

@@ -160,7 +160,6 @@ namespace DeNelle.HUD
         // every setter on the VM raises Changed, so a rebuild-per-keystroke would steal
         // focus on every character. Repaint patches these in place instead.
         private TMP_InputField _nameField;
-        private TextMeshProUGUI _namePreview;
         private Button _nameSubmit;
         private TMP_InputField _createNameField;
         private TMP_InputField _createTagField;
@@ -299,7 +298,6 @@ namespace DeNelle.HUD
         private void ForgetFormWidgets()
         {
             _nameField = null;
-            _namePreview = null;
             _nameSubmit = null;
             _createNameField = null;
             _createTagField = null;
@@ -352,34 +350,31 @@ namespace DeNelle.HUD
         // =====================================================================
         private void BuildNeedsName()
         {
-            var title = ListRow(PreviewRowH);
+            // Title + hint share one band so CLAIM stays on the first screen. A five-band
+            // stack (title/hint/field/preview/submit) painted below the well on Seeker
+            // 2670x1200 - only chrome CLOSE was tappable (felt 2026-09-19).
+            var title = ListRow(SectionRowH);
             KeyLabel(title, _vm.NamePromptKey, ElarionUi.FontTitle, ElarionUi.Gold,
-                TextAlignmentOptions.Center);
-
-            var hint = ListRow(PreviewRowH);
-            KeyLabel(hint, _vm.NameHintKey, ElarionUi.FontLabel, ElarionUi.ParchmentDim,
-                TextAlignmentOptions.Center);
+                TextAlignmentOptions.Center, 0.02f, 0.98f, 0.45f, 0.98f);
+            KeyLabel(title, _vm.NameHintKey, ElarionUi.FontLabel, ElarionUi.ParchmentDim,
+                TextAlignmentOptions.Center, 0.02f, 0.98f, 0.02f, 0.48f);
 
             var field = ListRow(FieldRowH);
             KeyLabel(field, _vm.NameFieldKey, ElarionUi.FontLabel, ElarionUi.Parchment,
-                TextAlignmentOptions.Left, 0.02f, 0.30f);
+                TextAlignmentOptions.Left, 0.02f, 0.28f);
             _nameField = MakeInputField(field, CircleScreenVM.NameMaxLength,
-                new Vector2(0.32f, 0.05f), new Vector2(0.98f, 0.95f));
+                new Vector2(0.30f, 0.08f), new Vector2(0.62f, 0.92f),
+                Resolve(_vm.NameHintKey));
             _nameField.SetTextWithoutNotify(_vm.NameDraft ?? string.Empty);
             _nameField.onValueChanged.AddListener(OnNameDraftTyped);
-
-            var preview = ListRow(PreviewRowH);
-            _namePreview = KeyLabel(preview, null, ElarionUi.FontBody, ElarionUi.Parchment,
-                TextAlignmentOptions.Center);
-
-            var submit = ListRow(ActionRowH);
-            _nameSubmit = ElarionUiKit.Button(submit, Resolve(_vm.NameSubmitKey),
+            _nameSubmit = ElarionUiKit.Button(field, Resolve(_vm.NameSubmitKey),
                 ElarionUiKit.ButtonKind.Gold,
-                new Vector2(0.06f, 0.05f), new Vector2(0.60f, 0.95f), OnSubmitName);
+                new Vector2(0.64f, 0.08f), new Vector2(0.98f, 0.92f), OnSubmitName);
             if (_vm.HasDisplayName)
             {
-                ElarionUiKit.Button(submit, Resolve(KeyNameCancel), ElarionUiKit.ButtonKind.Quiet,
-                    new Vector2(0.64f, 0.05f), new Vector2(0.98f, 0.95f), OnCancelName);
+                var cancel = ListRow(ActionRowH);
+                ElarionUiKit.Button(cancel, Resolve(KeyNameCancel), ElarionUiKit.ButtonKind.Quiet,
+                    new Vector2(0.28f, 0.08f), new Vector2(0.72f, 0.92f), OnCancelName);
             }
 
             PatchNeedsName();
@@ -387,8 +382,6 @@ namespace DeNelle.HUD
 
         private void PatchNeedsName()
         {
-            if (_namePreview != null)
-                _namePreview.text = CircleScreenVM.ComposeDisplayName(_vm.NameDraft, _vm.CircleName);
             if (_nameSubmit != null) _nameSubmit.interactable = _vm.CanSubmitName && !_vm.IsBusy;
         }
 
@@ -557,53 +550,47 @@ namespace DeNelle.HUD
         // =====================================================================
         private void BuildCreateOrJoin()
         {
+            // FORM CIRCLE sits on the tag row so it is on the first screen. The old
+            // nine-band stack (titles, two hints, two submits) put Form Circle below
+            // the well - same clip as NeedsName.
             KeyLabel(ListRow(SectionRowH), KeyCreateTitle, ElarionUi.FontTitle,
                 ElarionUi.Gold, TextAlignmentOptions.Left, 0.02f, 0.98f);
 
             var nameRow = ListRow(FieldRowH);
             KeyLabel(nameRow, KeyCreateName, ElarionUi.FontLabel, ElarionUi.Parchment,
-                TextAlignmentOptions.Left, 0.02f, 0.30f);
+                TextAlignmentOptions.Left, 0.02f, 0.28f);
             _createNameField = MakeInputField(nameRow, CircleScreenVM.CircleNameMaxLength,
-                new Vector2(0.32f, 0.05f), new Vector2(0.98f, 0.95f));
+                new Vector2(0.30f, 0.08f), new Vector2(0.98f, 0.92f),
+                Resolve(_vm.CreateHintKey));
             _createNameField.SetTextWithoutNotify(_vm.CreateName ?? string.Empty);
             _createNameField.onValueChanged.AddListener(OnCreateNameTyped);
 
             var tagRow = ListRow(FieldRowH);
             KeyLabel(tagRow, KeyCreateTag, ElarionUi.FontLabel, ElarionUi.Parchment,
-                TextAlignmentOptions.Left, 0.02f, 0.30f);
+                TextAlignmentOptions.Left, 0.02f, 0.22f);
             _createTagField = MakeInputField(tagRow, CircleScreenVM.CircleTagMaxLength,
-                new Vector2(0.32f, 0.05f), new Vector2(0.62f, 0.95f));
+                new Vector2(0.24f, 0.08f), new Vector2(0.48f, 0.92f),
+                Resolve(KeyCreateTag));
             _createTagField.SetTextWithoutNotify(_vm.CreateTag ?? string.Empty);
             _createTagField.onValueChanged.AddListener(OnCreateTagTyped);
-
-            KeyLabel(ListRow(PreviewRowH), _vm.CreateHintKey, ElarionUi.FontLabel,
-                ElarionUi.ParchmentDim, TextAlignmentOptions.Left, 0.02f, 0.98f);
-
-            var createRow = ListRow(ActionRowH);
-            _createSubmit = ElarionUiKit.Button(createRow, Resolve(KeyCreateSubmit),
+            _createSubmit = ElarionUiKit.Button(tagRow, Resolve(KeyCreateSubmit),
                 ElarionUiKit.ButtonKind.Gold,
-                new Vector2(0.06f, 0.05f), new Vector2(0.94f, 0.95f), OnSubmitCreate);
+                new Vector2(0.50f, 0.08f), new Vector2(0.98f, 0.92f), OnSubmitCreate);
 
             KeyLabel(ListRow(SectionRowH), KeyJoinTitle, ElarionUi.FontTitle,
                 ElarionUi.Gold, TextAlignmentOptions.Left, 0.02f, 0.98f);
 
             var codeRow = ListRow(FieldRowH);
             KeyLabel(codeRow, KeyJoinCode, ElarionUi.FontLabel, ElarionUi.Parchment,
-                TextAlignmentOptions.Left, 0.02f, 0.30f);
+                TextAlignmentOptions.Left, 0.02f, 0.22f);
             _joinCodeField = MakeInputField(codeRow, CircleScreenVM.CircleCodeLength,
-                new Vector2(0.32f, 0.05f), new Vector2(0.72f, 0.95f));
+                new Vector2(0.24f, 0.08f), new Vector2(0.58f, 0.92f),
+                Resolve(_vm.JoinHintKey));
             _joinCodeField.SetTextWithoutNotify(_vm.JoinCode ?? string.Empty);
             _joinCodeField.onValueChanged.AddListener(OnJoinCodeTyped);
-
-            KeyLabel(ListRow(PreviewRowH), _vm.JoinHintKey, ElarionUi.FontLabel,
-                ElarionUi.ParchmentDim, TextAlignmentOptions.Left, 0.02f, 0.98f);
-
-            var joinRow = ListRow(ActionRowH);
-            _joinSubmit = ElarionUiKit.Button(joinRow, Resolve(KeyJoinSubmit),
+            _joinSubmit = ElarionUiKit.Button(codeRow, Resolve(KeyJoinSubmit),
                 ElarionUiKit.ButtonKind.Gold,
-                new Vector2(0.06f, 0.05f), new Vector2(0.60f, 0.95f), OnSubmitJoin);
-            ElarionUiKit.Button(joinRow, Resolve(KeyVerbRefresh), ElarionUiKit.ButtonKind.Quiet,
-                new Vector2(0.64f, 0.05f), new Vector2(0.98f, 0.95f), OnRefresh);
+                new Vector2(0.60f, 0.08f), new Vector2(0.98f, 0.92f), OnSubmitJoin);
 
             PatchCreateOrJoin();
         }
@@ -1289,7 +1276,7 @@ namespace DeNelle.HUD
         /// inventing a second shape.
         /// </summary>
         private static TMP_InputField MakeInputField(Transform parent, int characterLimit,
-            Vector2 min, Vector2 max)
+            Vector2 min, Vector2 max, string placeholder = null)
         {
             var host = new GameObject("Field", typeof(Image), typeof(TMP_InputField));
             host.transform.SetParent(parent, false);
@@ -1300,7 +1287,9 @@ namespace DeNelle.HUD
             rt.offsetMax = Vector2.zero;
 
             var bg = host.GetComponent<Image>();
-            bg.color = new Color(0f, 0f, 0f, 0.45f);
+            // Light well + ink text. A 45% black fill on the dark hub made the field
+            // invisible on Seeker (Screenshot_20260919-091924).
+            bg.color = ElarionUi.Parchment;
             ElarionUiKit.ApplyRounded(bg);
 
             var areaGo = new GameObject("TextArea", typeof(RectTransform), typeof(RectMask2D));
@@ -1312,14 +1301,26 @@ namespace DeNelle.HUD
             art.offsetMax = new Vector2(-14f, -4f);
 
             var text = ElarionUiKit.Label(areaGo.transform, string.Empty, 0f, 1f,
-                ElarionUi.Parchment, ElarionUi.FontBody, TextAlignmentOptions.Left, 0f, 1f);
+                ElarionUi.Ink, ElarionUi.FontBody, TextAlignmentOptions.Left, 0f, 1f);
+
+            TextMeshProUGUI ph = null;
+            if (!string.IsNullOrEmpty(placeholder))
+            {
+                var inkHint = new Color(ElarionUi.Ink.r, ElarionUi.Ink.g, ElarionUi.Ink.b, 0.45f);
+                ph = ElarionUiKit.Label(areaGo.transform, placeholder, 0f, 1f,
+                    inkHint, ElarionUi.FontBody, TextAlignmentOptions.Left, 0f, 1f);
+                ph.raycastTarget = false;
+            }
 
             var field = host.GetComponent<TMP_InputField>();
             field.targetGraphic = bg;
             field.textViewport = art;
             field.textComponent = text;
+            field.placeholder = ph;
             field.lineType = TMP_InputField.LineType.SingleLine;
             field.characterLimit = characterLimit;
+            field.customCaretColor = true;
+            field.caretColor = ElarionUi.Ink;
             field.text = string.Empty;
             return field;
         }

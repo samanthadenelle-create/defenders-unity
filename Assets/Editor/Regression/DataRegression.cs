@@ -780,6 +780,10 @@ namespace DeNelle.Editor
             // defender's awareness radius, and the 180s clock cannot advance before first engagement.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-staging suite", () => { if (!DeNelle.Editor.Regression.RaidStagingMarkerRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-staging] " + r); });
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-base-layout suite", () => { if (!DeNelle.Editor.Regression.RaidBaseLayoutRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-base-layout] " + r); });
+            // WO-1878 — Iron Bastion hardest-raid identity: 7 archer + 3 wizard from REAL types
+            // (role-split ResolveTowerTypes), Landscape outer (no targetable Wall_Outer_*), Bastion
+            // raidDress (not garrison synty-castle / not empty), Extreme max-tier visuals.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "iron-bastion-hardest suite", () => { if (!DeNelle.Editor.Regression.IronBastionHardestRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[iron-bastion-hardest] " + r); });
             // WO-1749 - the raid OBJECTIVE must be REACHABLE. PlaceSpire seated the spire on the ground and
             // RaidBaseDresser.RaiseKeep then dropped a 1.5m platform over it, so every troop pathed to a point
             // inside solid geometry: the device read routeObj=PathPartial 1650 times and PathComplete ZERO.
@@ -1656,6 +1660,8 @@ namespace DeNelle.Editor
             // the player clears each ruin for a town.captureSalvagePct share of its build cost
             // (owner ruling 2026-09-18: "load a destroyed camp and then clear the rubble").
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "captured-town-bare suite", () => { if (!DeNelle.Editor.Regression.CapturedTownStartsBareRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[captured-town-bare] " + r); });
+            // WO-1876 — captured town reuses castle HUD/build; OwnedTownPanel is not the rebuild door.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "owned-town-hud suite", () => { if (!DeNelle.Editor.Regression.OwnedTownHudReuseRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[owned-town-hud] " + r); });
             // WO-1870 — the Circle screen (a Remnant is the player, "Bob of RiverRun"; the group is a
             // Circle): VM-bound view, signed calls, no stat copy on ballots, key parity, the doors.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "circle-screen suite", () => { if (!DeNelle.Editor.Regression.CircleScreenRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[circle-screen] " + r); });
@@ -2112,6 +2118,10 @@ namespace DeNelle.Editor
             // WO-1096 (2026-09-09, lane SHOP): the shop preview loader branch is decided by the row's
             // own loadVia, never by a "blink_" id prefix; the armor flag governs armor only.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "shop-preview-loader-branch suite", () => { if (!DeNelle.Editor.PartyShopPreviewLoaderBranchRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[shop-preview-loader-branch] " + r); });
+
+            // WO-1877 (2026-09-19, lane SHOP): Armorer shows authored 2D plates, not IconShield;
+            // armor never short-circuits ResolveItemSprite, never 3D-previews, and family plates exist.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "armorer-plates suite", () => { if (!DeNelle.Editor.Regression.ArmorerShopPlatesRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[armorer-plates] " + r); });
 
             // WO-1094 (2026-09-09, lane LOCOMOTION): the playable bound is measured from the world
             // authority, never a literal; the teleport guard spans the warp frame and the next Update.

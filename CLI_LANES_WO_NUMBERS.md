@@ -189,7 +189,12 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-19 (CLI, two-hundred-and-eighty-second pass): main line next free = **1882**.
+> ## RECONCILED 2026-09-19 (CLI, two-hundred-and-eighty-third pass): main line next free = **1884**.
+> *(CLI minted **WO-1882** chat is a first-class HUD door (not gear/Settings), minimize, pause-or-run toggle;
+> **WO-1883** collector pending stays until Collect — auto-spill to bank is retired so the player returns.
+> Bumped 1882 -> 1884 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-19 (CLI, two-hundred-and-eighty-second pass): main line next free = **1882**.
 > *(CLI minted **WO-1879** web_trace excluded from player counts, **WO-1880** wave_started,
 > **WO-1881** founding_walk watchdog leak — owner triage 2026-09-19. Bumped 1879 -> 1882 in this SAME edit.)*
 >

@@ -74,8 +74,9 @@ namespace DeNelle.Village
         /// <param name="maxLevel">Highest level this structure can reach (1 = not upgradeable).</param>
         /// <param name="upgradeCostTotal">Total units of the next-tier upgrade cost (for display).</param>
         /// <param name="canAffordUpgrade">True when the player can pay the next-tier cost now.</param>
+        /// <param name="sellVerb">WO-1876 — "Sell" for standing bodies; "Clear" for owned-town rubble salvage.</param>
         public void Show(string structureName, int refund, int level, int maxLevel,
-                         int upgradeCostTotal, bool canAffordUpgrade)
+                         int upgradeCostTotal, bool canAffordUpgrade, string sellVerb = "Sell")
         {
             EnsureBuilt();
             if (_canvas == null) return;
@@ -89,7 +90,10 @@ namespace DeNelle.Village
                 _titleLabel.text = max > 1 ? $"{baseName}  (Lv {lvl}/{max})" : baseName;
             }
             if (_sellLabel != null)
-                _sellLabel.text = "Sell (" + Mathf.Max(0, refund) + ")";   // ASCII — no crystal glyph in TMP
+            {
+                string verb = string.IsNullOrEmpty(sellVerb) ? "Sell" : sellVerb;
+                _sellLabel.text = verb + " (" + Mathf.Max(0, refund) + ")";   // ASCII — no crystal glyph in TMP
+            }
 
             if (_upgradeBtn != null)
             {

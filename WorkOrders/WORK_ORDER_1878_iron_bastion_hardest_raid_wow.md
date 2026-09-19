@@ -1,6 +1,6 @@
 # WO-1878 — Iron Bastion is the hardest raid: max archer + wizard towers, forced fights, landscape enclosure, wow
 
-**Status:** READY TO IMPLEMENT — minted 2026-09-18 (banner bumped 1878 -> 1879 in the same edit). Live Seeker frame `Logs/device/issue-now.png` (pulled this session).
+**Status:** IMPLEMENTED — gated 2026-09-19 `COMPILE_GATE_OK` (`Builds/cg-wave1876.log`) + `REGRESSION_OK` (`Builds/r-wave1876c.log`). Scene bake of RaidBase_* still required for the on-disk Bastion ring. FIXED after tester APK.
 
 **Owner, verbatim (2026-09-18, on that frame):**
 - "supposed to be fog on ground and thunder storms in sky"

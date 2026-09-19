@@ -519,12 +519,12 @@ namespace DeNelle.Editor.Regression
                 return;
             }
 
-            // id -> kit, mirroring RaidBaseDresser.KitFor. iron_bastion authors no raidDress
-            // at all, so it takes every default; that is exactly why it is listed here.
+            // id -> kit fallback (RaidBaseDresser.KitFor). iron_bastion authors raidDress
+            // (WO-1878 dungeon-stone); dress.wallModule/gate still win when present.
             var camps = new[]
             {
                 new[] { "raider_camp_small", "hexagon-green" },
-                new[] { "iron_bastion",      "hexagon-green" },
+                new[] { "iron_bastion",      "dungeon-stone" },
                 new[] { "fortified_garrison", "synty-castle" },
                 new[] { "mage_enclave",       "dungeon-stone" },
             };

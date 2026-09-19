@@ -10,6 +10,12 @@ using UnityEngine.UI;
 
 namespace DeNelle.Village.World.Camps
 {
+    /// <summary>
+    /// LEGACY modal retained for UICaptureLaunch / editor play-proofs only.
+    /// WO-1876 — NOT the rebuild door. Capture/reentry must not auto-Show this;
+    /// the peaceful dock Build face + <see cref="BuildModeController"/> selection
+    /// are the player path. Do not greenfield a third town UI here.
+    /// </summary>
     public sealed class OwnedTownPanel : MonoBehaviour
     {
         private GameObject _ui;
@@ -26,6 +32,7 @@ namespace DeNelle.Village.World.Camps
 
         public void SelectStructure(string instanceId)
         {
+            // Harness-only: BuildModeController no longer routes here (WO-1876).
             _selected = instanceId; _feedback = null; _repairMode = false; Show();
         }
         public void HideForBuild()

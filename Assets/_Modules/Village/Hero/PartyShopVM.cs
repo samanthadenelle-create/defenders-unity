@@ -1021,7 +1021,8 @@ namespace DeNelle.Village.Hero
                 string reason = string.IsNullOrEmpty(lockReason) ? "Locked" : lockReason;
                 _rowActions[id] = () => { Status = LockedTapLine(name, reason); };
                 _items.Add(new ItemVM(id, name, IconRoleWeapon, id, cost.Coins, "gold",
-                    affordable: false, w.rarity, equipped: false, locked: true, lockReason: reason));
+                    affordable: false, w.rarity, equipped: false, locked: true, lockReason: reason,
+                    iconPath: w.iconPath));
                 return;
             }
 
@@ -1033,7 +1034,7 @@ namespace DeNelle.Village.Hero
             // WO-808: owned rows carry the instance's gear level (View shows a "Lv N" chip when > 1).
             _items.Add(new ItemVM(id, name, IconRoleWeapon, id, owned ? 0 : cost.Coins, "gold",
                 affordable, w.rarity, equipped: equipped, locked: false,
-                level: owned ? GearLevel(id) : 1));
+                iconPath: w.iconPath, level: owned ? GearLevel(id) : 1));
         }
 
         private void AddBuyArmorRow(ArmorDef a, ResourceCost cost, bool owned, bool equipped, bool affordable,
@@ -1052,7 +1053,8 @@ namespace DeNelle.Village.Hero
                 string reason = string.IsNullOrEmpty(lockReason) ? "Locked" : lockReason;
                 _rowActions[id] = () => { Status = LockedTapLine(name, reason); };
                 _items.Add(new ItemVM(id, name, IconRoleArmor, id, cost.Coins, "gold",
-                    affordable: false, a.rarity, equipped: false, locked: true, lockReason: reason));
+                    affordable: false, a.rarity, equipped: false, locked: true, lockReason: reason,
+                    iconPath: a.iconPath));
                 return;
             }
 
@@ -1061,7 +1063,7 @@ namespace DeNelle.Village.Hero
 
             _items.Add(new ItemVM(id, name, IconRoleArmor, id, owned ? 0 : cost.Coins, "gold",
                 affordable, a.rarity, equipped: equipped, locked: false,
-                level: owned ? GearLevel(id) : 1));
+                iconPath: a.iconPath, level: owned ? GearLevel(id) : 1));
         }
 
         /// <summary>
@@ -1472,7 +1474,8 @@ namespace DeNelle.Village.Hero
                 _rowDetails[id] = new PartyShopDetail(
                     ArmorStats(a), "", DescribeGear(a.job, a.rarity), a.iconPath, IconRoleArmor, id);
                 _rowActions[id] = () => SellGear(a.id, refund);
-                _items.Add(new ItemVM(id, name, IconRoleArmor, id, refund.Coins, "gold", true, a.rarity, equipped: equipped));
+                _items.Add(new ItemVM(id, name, IconRoleArmor, id, refund.Coins, "gold", true, a.rarity,
+                    equipped: equipped, iconPath: a.iconPath));
             }
 
             foreach (var (w, qty) in _store.OwnedWeapons())
@@ -1494,7 +1497,8 @@ namespace DeNelle.Village.Hero
                 _rowDetails[id] = new PartyShopDetail(
                     WeaponStats(w), "", DescribeGear(w.job, w.rarity), w.iconPath, IconRoleWeapon, id);
                 _rowActions[id] = () => SellGear(w.id, refund);
-                _items.Add(new ItemVM(id, name, IconRoleWeapon, id, refund.Coins, "gold", true, w.rarity, equipped: equipped));
+                _items.Add(new ItemVM(id, name, IconRoleWeapon, id, refund.Coins, "gold", true, w.rarity,
+                    equipped: equipped, iconPath: w.iconPath));
             }
 
             Status = _items.Count == 0

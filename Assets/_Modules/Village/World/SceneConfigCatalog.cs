@@ -208,6 +208,18 @@ namespace DeNelle.Village
         public int archerTowerCount;
         public int mageTowerCount;
 
+        /// <summary>
+        /// WO-1878 — how the yard's OUTER edge is authored. Absent / <c>"Wall"</c> (default) =
+        /// targetable <c>Wall_Outer_*</c> ring. <c>"Landscape"</c> = skip that ring and close the
+        /// plane with <c>ArenaBoundaryRing</c> only (rocks/hills, colliders, no WallSegment).
+        /// Camp defenses remain the towers + spire (+ optional keep layers).
+        /// </summary>
+        public string outerEnclosure;
+
+        /// <summary>True when <see cref="outerEnclosure"/> is Landscape (WO-1878).</summary>
+        public bool UsesLandscapeOuterEnclosure =>
+            string.Equals(outerEnclosure, "Landscape", System.StringComparison.OrdinalIgnoreCase);
+
         // ── Central / props ──────────────────────────────────────────────────
         public string centralBuilding;
         public List<TowerDef> towers;

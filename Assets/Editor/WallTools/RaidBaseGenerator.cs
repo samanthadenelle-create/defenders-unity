@@ -78,9 +78,10 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using Newtonsoft.Json;          // structures-catalog read (same reader shape as CatalogBootstrap)
 using DeNelle.Core;             // CanonicalJson, MagentaGuard
+using DeNelle.Core.Catalog;     // RepoProps.MaxStructureLevel (WO-1878 max-tier visual)
 using DeNelle.Core.Combat;      // DamageElement
 using DeNelle.Core.Diagnostics; // FlowTrace (WO-1722 fit-scale instrumentation)
-using DeNelle.Village;          // WallSegment, SceneConfigCatalog, SceneConfigDef, DefenseTower
+using DeNelle.Village;          // WallSegment, SceneConfigCatalog, SceneConfigDef, DefenseTower, PlacedStructure
 using DeNelle.Village.Walls;    // WallTier, WallTierData
 using DeNelle.Village.World.Camps;  // RaidSpire, RaidGarrisonSpawner
 using Object = UnityEngine.Object;   // disambiguate Object (System.Object vs UnityEngine.Object)
@@ -900,8 +901,29 @@ namespace DeNelle.Editor
             float outerModule = RaidBaseDresser.WallModuleWidth(def, inner: false);
             float innerModule = RaidBaseDresser.WallModuleWidth(def, inner: true);
 
-            var outer = BuildRing(root, radius, Mathf.Max(3, def.wallSegmentsPerSide), outerTier,
+            // WO-1878: Landscape outer = ArenaBoundaryRing closes the plane; no targetable
+            // Wall_Outer_* box. Keep layers (if authored) stay as camp defense art.
+            RingReport outer;
+            bool landscapeOuter = string.Equals(def.outerEnclosure, "Landscape",
+                StringComparison.OrdinalIgnoreCase);
+            if (landscapeOuter)
+            {
+                float segW = outerModule >= 0.2f ? outerModule : MaxSegmentWidth;
+                outer = new RingReport
+                {
+                    HalfExtent = radius,
+                    SlotsPerSide = 0,
+                    SegmentWidth = segW,
+                    GateWidth = RaidBaseDresser.MinGateWidth,
+                };
+                Debug.Log($"[RaidBaseGenerator] '{def.id}' outer enclosure = LANDSCAPE " +
+                          $"(ArenaBoundaryRing only; no Wall_Outer_* / WallSegment on the yard edge).");
+            }
+            else
+            {
+                outer = BuildRing(root, radius, Mathf.Max(3, def.wallSegmentsPerSide), outerTier,
                                   outerGates, "Outer", outerModule);
+            }
 
             // -- INNER keep ring(s) (interiorWallLayers) - the kill-zone. Each layer sits
             //    at 45% of the ring outside it, with a single NORTH gate opposite the outer
@@ -964,6 +986,7 @@ namespace DeNelle.Editor
                 InnerRings = innerLayouts.ToArray(),
                 GateWidth = Mathf.Max(RaidBaseDresser.MinGateWidth, outer.GateWidth),
                 SegmentWidth = outer.SegmentWidth,
+                LandscapeOuter = landscapeOuter,
             });
 
             // WO-1749 — THE SPIRE'S Y IS DECIDED **HERE**, AFTER THE DRESSER, AND NOWHERE ELSE.
@@ -1301,7 +1324,12 @@ namespace DeNelle.Editor
             public bool CanHitAir;
             public DamageElement Element;
             public string Label;
+            /// <summary>Upgrade visual + projectile tier (1-based). Extreme uses the row max.</summary>
+            public int Level = 1;
         }
+
+        /// <summary>WO-1878 — archer slots and mage slots consume DISJOINT palettes from towers[].</summary>
+        private enum TurretRole { Archer, Mage }
 
         private static TowerReport PlaceTowers(Transform root, SceneConfigDef def, RaidTier tier,
                                                float radius, float segWidth, int seed)
@@ -1318,9 +1346,10 @@ namespace DeNelle.Editor
                 return report;
             }
 
-            // TYPE palette from the (previously dead) towers[] array, weighted by count.
-            var archerTypes = ResolveTowerTypes(def, DefaultArcherTowerId);
-            var mageTypes = ResolveTowerTypes(def, DefaultMageTowerId);
+            // TYPE palette from towers[], weighted by count, FILTERED by role (WO-1878).
+            // Feeding both slots the same unfiltered list made Extreme Bastion place 10 spires.
+            var archerTypes = ResolveTowerTypes(def, TurretRole.Archer, DefaultArcherTowerId);
+            var mageTypes = ResolveTowerTypes(def, TurretRole.Mage, DefaultMageTowerId);
 
             // BAND SPLIT from the authored towerPlacementStyle:
             //   "Cardinal"        -> every turret on the wall line (the centre is a safe
@@ -1357,7 +1386,7 @@ namespace DeNelle.Editor
                     CatalogId = typeId,
                     Label = $"Watchtower_{(isMage ? "Mage" : "Archer")}_{kindIndex}",
                 };
-                ResolveTowerStats(plan, rangeCap);
+                ResolveTowerStats(plan, rangeCap, tier);
                 plans.Add(plan);
 
                 typeCounts.TryGetValue(typeId, out int n);
@@ -1448,19 +1477,23 @@ namespace DeNelle.Editor
         }
 
         /// <summary>
-        /// The type palette for a turret slot, expanded from the config's (previously
-        /// unread) <c>towers[]</c> array and weighted by each entry's count. Falls back to
-        /// a single default id when towers[] is absent/empty.
+        /// The type palette for one turret ROLE, expanded from <c>towers[]</c> and weighted by
+        /// count. WO-1878: archer slots only take archer-family ids; mage slots only take mage /
+        /// ArcaneTower ids. The old path fed BOTH roles the same unfiltered list, so a
+        /// spire-only <c>towers[]</c> (or a mixed list indexed from 0 for mages) made every
+        /// Extreme Bastion turret a spire. Falls back to <paramref name="fallbackId"/> when the
+        /// filtered palette is empty.
         /// </summary>
-        private static List<string> ResolveTowerTypes(SceneConfigDef def, string fallbackId)
+        private static List<string> ResolveTowerTypes(SceneConfigDef def, TurretRole role, string fallbackId)
         {
             var list = new List<string>();
-            if (def.towers != null)
+            if (def != null && def.towers != null)
             {
                 for (int i = 0; i < def.towers.Count; i++)
                 {
                     var t = def.towers[i];
                     if (t == null || string.IsNullOrEmpty(t.type)) continue;
+                    if (!MatchesTurretRole(t.type, role)) continue;
                     int n = Mathf.Clamp(t.count, 1, 16);
                     for (int c = 0; c < n; c++) list.Add(t.type);
                 }
@@ -1469,12 +1502,40 @@ namespace DeNelle.Editor
             return list;
         }
 
+        private static bool MatchesTurretRole(string typeId, TurretRole role)
+        {
+            bool mage = IsMageTowerType(typeId);
+            return role == TurretRole.Mage ? mage : !mage;
+        }
+
+        /// <summary>
+        /// Mage / wizard turret ids: the default Arcane Spire, or a catalog row whose
+        /// behaviorId is ArcaneTower / element is Aether. Everything else is archer-family
+        /// for the raid palette (ground archer, ballista, catapult, siege).
+        /// </summary>
+        private static bool IsMageTowerType(string typeId)
+        {
+            if (string.IsNullOrEmpty(typeId)) return false;
+            if (string.Equals(typeId, DefaultMageTowerId, StringComparison.OrdinalIgnoreCase))
+                return true;
+            var entry = FindStructure(typeId);
+            var repo = entry != null ? entry.repo : null;
+            if (repo == null) return false;
+            if (string.Equals(repo.behaviorId, "ArcaneTower", StringComparison.OrdinalIgnoreCase))
+                return true;
+            if (string.Equals(repo.element, "Aether", StringComparison.OrdinalIgnoreCase))
+                return true;
+            return false;
+        }
+
         /// <summary>
         /// Fill a plan's combat stats from its structures-catalog row (range / damage /
         /// fireRate / canHitAir / element / art). Range is capped so a turret can never
         /// blanket the arena. A missing row logs once and takes sane defaults.
+        /// Extreme (WO-1878) wears the row's authored max upgrade visual, clamped by
+        /// <see cref="RepoProps.MaxStructureLevel"/> — never a hardcoded level literal.
         /// </summary>
-        private static void ResolveTowerStats(TowerPlan plan, float rangeCap)
+        private static void ResolveTowerStats(TowerPlan plan, float rangeCap, RaidTier tier)
         {
             var entry = FindStructure(plan.CatalogId);
             var repo = entry != null ? entry.repo : null;
@@ -1485,12 +1546,31 @@ namespace DeNelle.Editor
             plan.RawDamage = repo != null && repo.damage > 0.01f ? repo.damage : 10f;
             plan.CanHitAir = true;   // the party is ground; keep the turret able to reach it
             plan.Element = ParseElement(repo != null ? repo.element : null);
-            plan.PrefabPath = entry != null && !string.IsNullOrEmpty(entry.visualPrefabPath)
-                ? entry.visualPrefabPath : FallbackTowerPath;
+
+            int level = 1;
+            if (tier.Name == "Extreme" && repo != null && repo.maxLevel > 1)
+                level = Mathf.Clamp(repo.maxLevel, 1, RepoProps.MaxStructureLevel);
+            plan.Level = level;
+            plan.PrefabPath = VisualPathForLevel(entry, level) ?? FallbackTowerPath;
 
             if (entry == null)
                 Debug.LogWarning($"[RaidBaseGenerator] tower type '{plan.CatalogId}' is not in " +
                                  "structures-catalog.json - using default turret stats + fallback art.");
+        }
+
+        /// <summary>
+        /// Catalog visual for a structure at <paramref name="level"/> — same contract as
+        /// <c>StructureFactory.VisualPathForLevel</c> (upgradeVisualPath[level-2], else base).
+        /// Local copy because batchmode editor cannot rely on CatalogRegistry hydration.
+        /// </summary>
+        private static string VisualPathForLevel(StructEntry entry, int level)
+        {
+            if (entry == null) return null;
+            var ladder = entry.repo != null ? entry.repo.upgradeVisualPath : null;
+            if (level >= 2 && ladder != null && ladder.Length >= level - 1
+                && !string.IsNullOrEmpty(ladder[level - 2]))
+                return ladder[level - 2];
+            return entry.visualPrefabPath;
         }
 
         /// <summary>
@@ -1783,6 +1863,13 @@ namespace DeNelle.Editor
             dt.Element = plan.Element;
             dt.BoltColor = new Color(0.95f, 0.3f, 0.2f);   // hostile red bolt
 
+            // WO-1878: DefenseTower.Tier reads PlacedStructure.level for max-tier archer arrows.
+            // Extreme plans carry the row max; Regular/Hard stay at 1.
+            var placed = go.GetComponent<PlacedStructure>();
+            if (placed == null) placed = go.AddComponent<PlacedStructure>();
+            placed.itemId = plan.CatalogId;
+            placed.level = Mathf.Max(1, plan.Level);
+
             // WO-1767: the captured-town address, emitted at creation (see the IdentityRole* block).
             StampIdentity(go, IdentityRoleTower);
         }
@@ -1794,8 +1881,8 @@ namespace DeNelle.Editor
                 "Assets/Scenes/RaidBase_IronBastion.unity", UnityEditor.SceneManagement.OpenSceneMode.Single);
             var def = SceneConfigCatalog.Find("iron_bastion");
             if (def == null) throw new System.InvalidOperationException("Final raid config is missing.");
-            var archers = ResolveTowerTypes(def, DefaultArcherTowerId);
-            var mages = ResolveTowerTypes(def, DefaultMageTowerId);
+            var archers = ResolveTowerTypes(def, TurretRole.Archer, DefaultArcherTowerId);
+            var mages = ResolveTowerTypes(def, TurretRole.Mage, DefaultMageTowerId);
             int count = 0;
             foreach (var root in scene.GetRootGameObjects())
                 foreach (var tower in root.GetComponentsInChildren<DefenseTower>(true))
@@ -2565,6 +2652,9 @@ namespace DeNelle.Editor
             public float fireRate;
             public bool canHitAir;
             public string element;
+            public string behaviorId;
+            public int maxLevel;
+            public string[] upgradeVisualPath;
             public float visualHeight;
             public float heightMul;
         }

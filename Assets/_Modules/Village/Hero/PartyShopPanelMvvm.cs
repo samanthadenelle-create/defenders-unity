@@ -116,7 +116,9 @@ namespace DeNelle.Village.Hero
         // baked-grey) icon sits on a neutral premium backing instead of the gold store panel.
         // The square anchors below MUST match the _previewImage/_previewSprite square in
         // BuildPreviewPane (kept in sync via these consts).
-        private static readonly Vector2 PreviewSquareMin = new Vector2(0.20f, 0.42f);
+        // WO-1877: plate fills the well; name/desc/specs sit UNDER it with enough band that HP
+        // + delta stay fully visible (live Seeker frame clipped the HP line under 0.42→0.19).
+        private static readonly Vector2 PreviewSquareMin = new Vector2(0.20f, 0.50f);
         private static readonly Vector2 PreviewSquareMax = new Vector2(0.80f, 0.98f);
         // The backing extends a little PAST the icon square so it reads as a frame around it.
         private const float PreviewBackingPad = 0.03f;
@@ -948,14 +950,16 @@ namespace DeNelle.Village.Hero
             t.color = ElarionUi.ParchmentDim;
             t.alignment = TMPro.TextAlignmentOptions.Center;
             t.textWrappingMode = TMPro.TextWrappingModes.Normal;
-            t.overflowMode = TMPro.TextOverflowModes.Truncate;
+            // WO-1877: Truncate clipped the armorer "come back after you level up" sentence mid-word
+            // on the live Seeker frame; overflow so the wrapped copy stays readable.
+            t.overflowMode = TMPro.TextOverflowModes.Overflow;
             t.raycastTarget = false;      // display-only: never eats a tap meant for a row
             FlowTrace.Step("Store",
                 $"PartyShop rendered capped-shelf FOOTER note under the list: \"{msg}\"");
         }
 
-        // Two lines of FontMicro plus breathing room — the authored footer copy is a sentence.
-        private const float FooterNoteHeightPx = 64f;
+        // Three lines of FontMicro plus breathing room — the authored footer copy is a sentence.
+        private const float FooterNoteHeightPx = 96f;
 
         // =====================================================================
         // WO-1584 - ADAPTIVE COLUMN BAND (the real cause of the "blank first row"
@@ -1176,9 +1180,9 @@ namespace DeNelle.Village.Hero
             LayoutRebuilder.ForceRebuildLayoutImmediate(_scrollContent);
         }
 
-        // SLIM name-only row (WO-501 owner point 2): one plate (for the selected-row hold tint) + the
-        // NAME spanning the row. All the detail (icon/stats/delta/price/action) moved to the preview
-        // pane beside the list. Tapping the row inspects it -> _vm.Select(id) -> Render -> RenderPreview.
+        // Slim list row (WO-501 / WO-1877): plate + LEFT thumb of the piece's 2D art + NAME.
+        // Stats/delta/price/action live in the preview pane beside the list. Tapping the row
+        // inspects it -> _vm.Select(id) -> Render -> RenderPreview.
         private void CreateRow(Transform parent, ItemVM item)
         {
             bool isSell = _vm != null && _vm.Tab == PartyShopTab.Sell;
@@ -1205,6 +1209,27 @@ namespace DeNelle.Village.Hero
             // Locked rows are still selectable so the player can preview stats + see the requirement.
             rowBtn.onClick.AddListener(() => _vm?.Select(id));
 
+            // WO-1877: left thumb of the same ResolveItemSprite plate the preview well uses.
+            // Name shifts right of the thumb so rows are not name-only bars.
+            var detail = _vm != null ? _vm.DetailFor(item.Id) : null;
+            var thumbSprite = ResolveItemSprite(detail, item);
+            float nameX0 = 0.04f;
+            if (thumbSprite != null)
+            {
+                var thumbGo = ElarionUiKit.AddImage(row.transform, "RowThumb",
+                    new Vector2(0.02f, 0.08f), new Vector2(0.16f, 0.92f), Color.white, rounded: false);
+                var thumbImg = thumbGo.GetComponent<Image>();
+                thumbImg.sprite = thumbSprite;
+                thumbImg.preserveAspect = true;
+                thumbImg.raycastTarget = false;
+                if (locked)
+                {
+                    var c = thumbImg.color;
+                    thumbImg.color = new Color(c.r, c.g, c.b, c.a * LockedRowAlpha);
+                }
+                nameX0 = 0.18f;
+            }
+
             // Name - locked rows dimmed; equipped names bold + gilt so the player sees what is worn.
             // A locked row shrinks the name column to make room for the right-aligned "requires" hint.
             Color nameColor = locked ? ElarionUi.ParchmentDim
@@ -1221,7 +1246,7 @@ namespace DeNelle.Village.Hero
             float nameX1 = (hasReason || hasLevelChip) ? 0.66f : 0.96f;
             var nameLbl = ElarionUiKit.Label(row.transform, item.Name,
                 0.0f, 1f, nameColor,
-                ElarionUi.FontLabel, TMPro.TextAlignmentOptions.Left, 0.04f, nameX1,
+                ElarionUi.FontLabel, TMPro.TextAlignmentOptions.Left, nameX0, nameX1,
                 bold: item.Equipped && !locked);
             ElarionUiKit.FitSingleLine(nameLbl, 22f, ElarionUi.FontLabel);
 
@@ -1297,7 +1322,7 @@ namespace DeNelle.Village.Hero
             var imgGo = new GameObject("PreviewImage", typeof(RawImage));
             imgGo.transform.SetParent(pane, false);
             var ir = imgGo.GetComponent<RectTransform>();
-            ir.anchorMin = new Vector2(0.20f, 0.42f); ir.anchorMax = new Vector2(0.80f, 0.98f);
+            ir.anchorMin = PreviewSquareMin; ir.anchorMax = PreviewSquareMax;
             ir.offsetMin = Vector2.zero; ir.offsetMax = Vector2.zero;
             _previewImage = imgGo.GetComponent<RawImage>();
             _previewImage.color = Color.white;
@@ -1305,26 +1330,26 @@ namespace DeNelle.Village.Hero
 
             // 2D fallback sprite in the SAME square (shown when no 3D model resolves).
             var spriteGo = ElarionUiKit.AddImage(pane, "PreviewSprite",
-                new Vector2(0.20f, 0.42f), new Vector2(0.80f, 0.98f), new Color(0f, 0f, 0f, 0f), rounded: false);
+                PreviewSquareMin, PreviewSquareMax, new Color(0f, 0f, 0f, 0f), rounded: false);
             _previewSprite = spriteGo.GetComponent<Image>();
             _previewSprite.raycastTarget = false;
             _previewSprite.preserveAspect = true;
 
             // 2D emoji/glyph fallback over the square (last-resort never-blank).
-            _previewGlyph = ElarionUiKit.Label(pane, "", 0.42f, 0.98f, ElarionUi.Parchment,
-                ElarionUi.FontTitle, TMPro.TextAlignmentOptions.Center, 0.20f, 0.80f, bold: true);
+            _previewGlyph = ElarionUiKit.Label(pane, "", PreviewSquareMin.y, PreviewSquareMax.y, ElarionUi.Parchment,
+                ElarionUi.FontTitle, TMPro.TextAlignmentOptions.Center, PreviewSquareMin.x, PreviewSquareMax.x, bold: true);
 
             // Empty state (nothing selected).
             _previewEmpty = ElarionUiKit.Label(pane, "Select an item to preview.", 0.50f, 0.62f,
                 ElarionUi.ParchmentDim, ElarionUi.FontLabel, TMPro.TextAlignmentOptions.Center, 0.05f, 0.95f);
 
-            // Name (gilt bold).
-            _previewName = ElarionUiKit.Label(pane, "", 0.29f, 0.42f, ElarionUi.Gilt,
+            // Name (gilt bold) — under the plate.
+            _previewName = ElarionUiKit.Label(pane, "", 0.38f, 0.50f, ElarionUi.Gilt,
                 ElarionUi.FontHead, TMPro.TextAlignmentOptions.Center, 0.04f, 0.96f, bold: true);
             ElarionUiKit.FitSingleLine(_previewName);   // flag_06: long gear names ellipsize in the pane
 
             // Flavour line (rarity + class fit) - the readable desc under the name.
-            _previewStats = ElarionUiKit.Label(pane, "", 0.20f, 0.29f, ElarionUi.ParchmentDim,
+            _previewStats = ElarionUiKit.Label(pane, "", 0.30f, 0.38f, ElarionUi.ParchmentDim,
                 ElarionUi.FontMicro, TMPro.TextAlignmentOptions.Center, 0.04f, 0.96f);
             ElarionUiKit.FitSingleLine(_previewStats, 0f, ElarionUi.FontMicro);
 
@@ -1334,10 +1359,11 @@ namespace DeNelle.Village.Hero
             // flavour line and the price. --
             // flag_06: RectMask2D so overflowing spec rows CLIP inside their block instead of
             // painting over the price below (text never overlaps siblings — §1.14 law).
+            // WO-1877: taller band so Defense + HP (+ deltas) both stay visible on phone.
             var specsGo = new GameObject("PreviewSpecs", typeof(RectTransform), typeof(RectMask2D));
             specsGo.transform.SetParent(pane, false);
             _previewSpecs = specsGo.GetComponent<RectTransform>();
-            _previewSpecs.anchorMin = new Vector2(0.06f, 0.02f); _previewSpecs.anchorMax = new Vector2(0.94f, 0.19f);
+            _previewSpecs.anchorMin = new Vector2(0.06f, 0.02f); _previewSpecs.anchorMax = new Vector2(0.94f, 0.29f);
             _previewSpecs.offsetMin = Vector2.zero; _previewSpecs.offsetMax = Vector2.zero;
             var specsVlg = specsGo.AddComponent<VerticalLayoutGroup>();
             specsVlg.childAlignment = TextAnchor.UpperCenter;
@@ -1477,6 +1503,13 @@ namespace DeNelle.Village.Hero
         private void BuildPreviewModelOrFallback(string id, PartyShopDetail detail, ItemVM? item)
         {
             if (string.IsNullOrEmpty(id)) { ShowSpriteFallback(detail, item, "no-id"); return; }
+            // WO-1877: armor never mesh-swaps the body, so Armorer preview is always the 2D plate
+            // (title + stats under it) — never a 3D turntable / addressable armor mesh.
+            if (detail.IconRole == PartyShopVM.IconRoleArmor)
+            {
+                ShowSpriteFallback(detail, item, "armor-2d-plate");
+                return;
+            }
             // Preview MODEL descriptor comes from the VM (PreviewModelFor resolves the gear def's
             // prefabPath + addressable flag) so this View never names GearCatalog. Non-gear rows
             // (goods/jeweler/craftable) come back IsGear=false -> straight to the 2D icon/glyph.
@@ -1824,18 +1857,13 @@ namespace DeNelle.Village.Hero
 
         // Real item sprite from the VM detail: prefer iconPath (the rendered item image), else the
         // ItemIconCatalog art for the def, else the pack glyph, else null (the View draws a glyph).
+        // WO-1877: armor/weapon MUST NOT short-circuit to IconShield/IconSword before iconPath —
+        // Armorer previews are 2D plates of the piece, not a generic role glyph.
         private static Sprite ResolveItemSprite(PartyShopDetail? detail, ItemVM item)
         {
             string role = detail.HasValue ? detail.Value.IconRole : item.IconRole;
-            // Large party-shop previews reject old catalog cards with baked white backgrounds.
-            // The clean transparent medieval equipment glyphs preserve category recognition;
-            // the authoritative item identity remains the adjacent name/spec data.
-            if (role == PartyShopVM.IconRoleArmor)
-                return RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconShield);
-            if (role == PartyShopVM.IconRoleWeapon)
-                return RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconSword);
-
             string iconPath = detail.HasValue ? detail.Value.IconPath : null;
+            if (string.IsNullOrEmpty(iconPath)) iconPath = item.IconPath;
             string category = detail.HasValue ? detail.Value.IconCategory : null;
 
             // WO-1584 - MATERIALS AND GEMS GO THROUGH THE MATERIAL SEAM, NOT THE POTION MAPPER.
@@ -1861,9 +1889,20 @@ namespace DeNelle.Village.Hero
 
             if (!string.IsNullOrEmpty(iconPath))
             {
-                var s = Resources.Load<Sprite>(iconPath);
-                if (s != null) return s;
+                var authored = Resources.Load<Sprite>(iconPath);
+                if (authored != null) return authored;
+                FlowTrace.Warn("Store",
+                    $"ART MISS id='{item.Id}' role='{(string.IsNullOrEmpty(role) ? "<none>" : role)}' " +
+                    $"iconPath='{iconPath}' -> Resources.Load returned null; falling through to catalog/glyph.");
             }
+
+            // Armor / weapon: role glyph is the never-blank LAST resort only (WO-1877). The View
+            // does not name GearCatalog here — authored iconPath is the plate authority.
+            if (role == PartyShopVM.IconRoleArmor)
+                return RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconShield);
+            if (role == PartyShopVM.IconRoleWeapon)
+                return RpgUiCatalog.Get(RpgUiCatalog.RoleIcons, RpgUiCatalog.IconSword);
+
             // Catalog art by def (sprite-first, the same source the legacy details pane used).
             // WO-598 goods/jeweler bands: try the sliced item-icon art by id/name; a miss
             // returns null so the caller draws the role glyph (never a wrong sword icon).

@@ -12,6 +12,7 @@
 //   4. Assets/StructureContent (tracked - always on a fresh clone)
 //   5. Resources.Load of the catalog visualPrefabPath (legacy, usually empty)
 // =============================================================================
+using System;
 using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
@@ -103,6 +104,8 @@ namespace DeNelle.Editor
             public RingLayout[] InnerRings;
             public float GateWidth;
             public float SegmentWidth;
+            /// <summary>WO-1878 — skip Outer WallSegment clad + outer gatehouses; landscape ring closes the plane.</summary>
+            public bool LandscapeOuter;
         }
 
         private static readonly string[] KayFolders =
@@ -180,7 +183,15 @@ namespace DeNelle.Editor
             // into every "Wall_{ringName}_S{side}_{i}" segment name — CladRing uses it to find
             // and re-height the matching WallSegment colliders it just hid the renderer of
             // (proven-cause fix, breach-tap wall-miss: see SyncWallColliderHeight).
-            float wallHeight = CladRing(root, wallTok, ctx.Radius, ctx.GateWidth, ctx.TwoGates, kit, "Outer");
+            // WO-1878: LandscapeOuter skips Outer WallSegment clad — ArenaBoundaryRing is the
+            // yard edge; a freestanding clad gatehouse without a wall reads as another box.
+            float wallHeight = 0f;
+            bool landscapeOuter = ctx.LandscapeOuter
+                || string.Equals(def.outerEnclosure, "Landscape", StringComparison.OrdinalIgnoreCase);
+            if (!landscapeOuter)
+                wallHeight = CladRing(root, wallTok, ctx.Radius, ctx.GateWidth, ctx.TwoGates, kit, "Outer");
+            else
+                FlowTrace.Step(Sys, $"'{def.id}' outer enclosure LANDSCAPE — no Outer WallSegment clad");
             if (ctx.InnerRings != null)
             {
                 for (int i = 0; i < ctx.InnerRings.Length; i++)
@@ -195,9 +206,12 @@ namespace DeNelle.Editor
             else if (ctx.InnerLayers > 0)
                 FlowTrace.Warn(Sys, "inner ring reports missing; refusing guessed gate geometry");
 
-            PlaceGatehouse(gatehouse, gateTok, kit, new Vector3(0f, 0f, -ctx.Radius), 0f, ctx.GateWidth, "south", wallHeight);
-            if (ctx.TwoGates)
-                PlaceGatehouse(gatehouse, gateTok, kit, new Vector3(0f, 0f, ctx.Radius), 180f, ctx.GateWidth, "north", wallHeight);
+            if (!landscapeOuter)
+            {
+                PlaceGatehouse(gatehouse, gateTok, kit, new Vector3(0f, 0f, -ctx.Radius), 0f, ctx.GateWidth, "south", wallHeight);
+                if (ctx.TwoGates)
+                    PlaceGatehouse(gatehouse, gateTok, kit, new Vector3(0f, 0f, ctx.Radius), 180f, ctx.GateWidth, "north", wallHeight);
+            }
 
             TileApproachRoad(approach, floorTok, ctx.Radius, ctx.GateWidth);
             TileCourtyardRing(courtyard, floorTok, ctx);
@@ -417,10 +431,9 @@ namespace DeNelle.Editor
         /// twice a trooper's height. The material is unchanged (`dungeon_texture_URP`, a real
         /// `_BaseMap`), because it is the same atlas the `barrier` already used.
         /// <para/>
-        /// REACH: this line reaches <b>iron_bastion only</b> - it is the one hexagon-green camp
-        /// with no `raidDress` block at all. `raider_camp_small` authors its own `wallModule` and
-        /// is moved in `scene-configs.json` instead (to `wall_broken`, the ruined variant, same
-        /// 4.00 x 4.00 x 1.00 box, because that camp's own fiction is a stripped settlement).
+        /// REACH: the hexagon-green fallback. Pre-WO-1878 this line also reached iron_bastion
+        /// because that row authored no `raidDress`; Bastion now authors dungeon-stone dress and
+        /// `outerEnclosure: Landscape`, so this fallback is the Easy camp / any undressed row.
         /// </summary>
         private static string DefaultWall(string kit)
         {

@@ -400,6 +400,7 @@
     "WORK_ORDER_1820_raid_spire_renders_sub_metre.md": {"at": "2026-09-17T13:50:54", "note": "owner: \"close, as tested\" (2026-09-17 raid-art lane: watchtower fit, spire, siege clad, corner posts)", "validated": true, "verdict": "Pass"},
     "WORK_ORDER_1821_raid_dresser_clads_catapult_hosts_and_leaves_fallback_pills.md": {"at": "2026-09-17T13:50:54", "note": "owner: \"close, as tested\" (2026-09-17 raid-art lane: watchtower fit, spire, siege clad, corner posts)", "validated": true, "verdict": "Pass"},
     "WORK_ORDER_1822_corner_posts_render_clad_native_height.md": {"at": "2026-09-17T13:50:54", "note": "owner: \"close, as tested\" (2026-09-17 raid-art lane: watchtower fit, spire, siege clad, corner posts)", "validated": true, "verdict": "Pass"},
+    "WORK_ORDER_1869_bastion_capture_never_fires_camp_id_mismatch.md": {"at": "2026-09-19T14:50:56", "build": "2026.09.18.375785", "note": "", "validated": true, "verdict": "Pass"},
     "WORK_ORDER_501_store_view_redesign.md": {"note": "", "validated": true, "verdict": "Pass"},
     "WORK_ORDER_505_battle_closing.md": {"note": "", "validated": true, "verdict": "Pass"},
     "WORK_ORDER_557_full_yarn_removal.md": {"note": "", "validated": true, "verdict": "Pass"},

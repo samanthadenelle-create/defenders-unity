@@ -16,7 +16,7 @@
       "buyWood": 20,
       "buyFood": 30,
       "buyIron": 10,
-      "iconPath": "ItemIcons/armor_cloth",
+      "iconPath": "ItemIcons/armor_ranger_common",
       "flavor": "Travelers wore it coming into Elarion with nothing, and wore it still leaving with less."
     },
     {
@@ -34,7 +34,7 @@
       "buyWood": 40,
       "buyFood": 80,
       "buyIron": 60,
-      "iconPath": "ItemIcons/armor_leather",
+      "iconPath": "ItemIcons/armor_ranger_uncommon",
       "flavor": "Cured twice, stitched tight - the armor of people who could not afford to die but could not afford plate."
     },
     {
@@ -52,7 +52,7 @@
       "buyFood": 50,
       "buyIron": 400,
       "buyCrystals": 10,
-      "iconPath": "ItemIcons/armor_chain",
+      "iconPath": "ItemIcons/armor_knight_rare",
       "makersMark": "Oathweld",
       "flavor": "Each ring closed by an Oathweld hand. A ward that turned a killing blow - power you could carry."
     },
@@ -71,7 +71,7 @@
       "buyWood": 100,
       "buyIron": 900,
       "buyCrystals": 50,
-      "iconPath": "ItemIcons/armor_plate",
+      "iconPath": "ItemIcons/armor_knight_epic",
       "makersMark": "Oathweld",
       "flavor": "Oathweld plate from the Bright Centuries. It did not dull, it did not rust, and it never wearied the wearer."
     },
@@ -90,7 +90,7 @@
       "buyIron": 2000,
       "buyCrystals": 200,
       "setId": "aegis",
-      "iconPath": "ItemIcons/aegis_plate",
+      "iconPath": "ItemIcons/armor_knight_legendary",
       "makersMark": "Oathweld",
       "saga": "The reforged Aegis - Borin's steel, Halvard's Oathweld plating, Pell's Heartwood core, Wren's Last Pressing. Worn with a full Aegis weapon, the Oathweld returns a portion of damage taken as a ward on the Heart."
     },
@@ -305,7 +305,7 @@
       "buyWood": 30,
       "buyFood": 20,
       "buyCrystals": 2,
-      "iconPath": "ItemIcons/armor_mage_common",
+      "iconPath": "ItemIcons/armor_mage_uncommon",
       "flavor": "Issued by the tutors on the first day. Washed twice a year whether it needed it or not."
     },
     {

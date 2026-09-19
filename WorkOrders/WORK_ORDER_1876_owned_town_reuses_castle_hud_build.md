@@ -1,6 +1,6 @@
 # WO-1876 — Captured town uses the castle HUD/build stack (retire OwnedTownPanel as the rebuild door)
 
-**Status:** READY TO IMPLEMENT — minted 2026-09-18 (banner bumped 1876 -> 1877 in the same edit). Prize-path (3-star Bastion → destroyed camp → player designs the layout). **No code until the owner says go.** Ollama `qwen2.5-coder:7b` ranked seams; the lead verified every path at source (claims that failed verification are recorded below, not acted on).
+**Status:** IMPLEMENTED — gated 2026-09-19 `COMPILE_GATE_OK` (`Builds/cg-wave1876.log`) + `REGRESSION_OK 588/588` (`Builds/r-wave1876c.log`). FIXED after tester APK.
 
 **Owner, verbatim (2026-09-18, this session):** "i want to start todays session by visiting that moment when a player beats the Iron Bastion and gets a player built Base. I envision that they get a destroyed base that they clear away and start designing their own base" then "the entire screen they use for rebuilding the town is asinine. We should be reusing the logic we have and simply passing if its castle or players base and using same structure"
 

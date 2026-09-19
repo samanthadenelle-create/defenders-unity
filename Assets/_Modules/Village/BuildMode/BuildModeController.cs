@@ -565,7 +565,7 @@ namespace DeNelle.Village
             if (IsOwnedTown && World.Camps.OwnedTownConstructionService.FindGrid() == null)
             { BuildFeedbackToast.Show("Reenter your town before opening construction."); return; }
             IsActive = true;
-            if (IsOwnedTown) UnityEngine.Object.FindAnyObjectByType<World.Camps.OwnedTownPanel>()?.HideForBuild();
+            // WO-1876 — OwnedTownPanel is no longer the rebuild door; do not HideForBuild/Show it.
             // WO-702 truce seam: publish "builder open" into Core so TutorialFlow can
             // defer step-intro dialogues and DialogueView (HUD, Core-only) can hide an
             // already-open dialogue until Exit. Village writes, everyone else reads.
@@ -708,7 +708,7 @@ namespace DeNelle.Village
             _selectionUi?.Hide();
             _hud?.Hide();
             _grid?.SetGridVisible(false);
-            if (IsOwnedTown) UnityEngine.Object.FindAnyObjectByType<World.Camps.OwnedTownPanel>()?.Show();
+            // WO-1876 — do not reopen OwnedTownPanel on exit; castle dock remains the door.
             DeNelle.Core.UI.TutorialSkipUi.SetSuppressed(false);
 
             // Stop the Lean.Touch driver + hide its button bar; revert to the desktop
@@ -2604,21 +2604,29 @@ namespace DeNelle.Village
             {
                 var identity = ps.GetComponent<World.Camps.OwnedTownPlacedIdentity>();
                 if (identity == null) { BuildFeedbackToast.Show("This fitted structure cannot be edited."); return; }
-                var ownedRecord = GameStateService.Instance?.State?.OwnedBase?.structures.Find(s => s.instanceId == identity.InstanceId);
+                var ownedBase = GameStateService.Instance?.State?.OwnedBase;
+                var ownedRecord = ownedBase?.structures.Find(s => s.instanceId == identity.InstanceId);
                 if (ownedRecord != null && !ownedRecord.retired && ownedRecord.constructionPending)
                 {
-                    string jobKey = OwnedTownJobKey.Compose(GameStateService.Instance.State.OwnedBase.baseId, ownedRecord.instanceId);
+                    string jobKey = OwnedTownJobKey.Compose(ownedBase.baseId, ownedRecord.instanceId);
                     Exit();
                     if (!DeNelle.Core.UI.PanelRouter.Open(DeNelle.Core.UI.PanelId.BuildingUpgrade, jobKey))
                         BuildFeedbackToast.Show("The construction page could not open. Please try again.");
                     return;
                 }
-                if (World.Camps.OwnedTownTemplateManifest.Load()?.IsEditableStructure(ownedRecord) != true)
-                { BuildFeedbackToast.Show("Choose a completed defense tower or a wall you built."); return; }
-                Exit();
-                var townPanel = UnityEngine.Object.FindAnyObjectByType<World.Camps.OwnedTownPanel>();
-                townPanel?.SelectStructure(identity.InstanceId);
-                return;
+                // WO-1876 — stay on the castle selection UI. Rubble (condition01 <= 0) is a
+                // clear-for-salvage verb on this same selection; editable towers/walls keep
+                // move/upgrade/sell. Never bounce to OwnedTownPanel.
+                bool clearable = CapturedTownStanddown.IsClearableRubble(ownedRecord);
+                bool editable = World.Camps.OwnedTownTemplateManifest.Load()?.IsEditableStructure(ownedRecord) == true;
+                if (!clearable && !editable)
+                {
+                    BuildFeedbackToast.Show("Choose a completed defense tower, a wall you built, or clearable rubble.");
+                    return;
+                }
+                FlowTrace.Step("Build",
+                    "OWNED_TOWN_SELECT id='" + identity.InstanceId + "' clearable=" + clearable +
+                    " editable=" + editable + " -> EnsureSelectionUi (WO-1876, no OwnedTownPanel).");
             }
             CancelArmed();
             ClearSelection();   // drop any prior highlight before re-selecting
@@ -2676,7 +2684,39 @@ namespace DeNelle.Village
                 canAfford = CanAfford(up);
             }
 
-            _selectionUi?.Show(label, RefundFor(ps), level, maxLevel, upgradeTotal, canAfford);
+            int refund = RefundFor(ps);
+            string sellVerb = "Sell";
+            // WO-1876 — rubble uses the same selection strip; Sell becomes Clear with salvage quote.
+            if (IsOwnedTown && TryGetOwnedRecord(ps, out var ownedRecord) &&
+                CapturedTownStanddown.IsClearableRubble(ownedRecord))
+            {
+                maxLevel = 1;
+                upgradeTotal = 0;
+                canAfford = false;
+                sellVerb = "Clear";
+                if (World.Camps.OwnedTownConstructionService.TryQuoteClear(ownedRecord.instanceId, out var salvage, out _))
+                    refund = salvage.wood + salvage.stone + salvage.iron + salvage.crystals;
+                else
+                    refund = 0;
+            }
+            else if (IsOwnedTown && TryGetOwnedRecord(ps, out ownedRecord) &&
+                     World.Camps.OwnedTownConstructionService.TryQuoteSale(ownedRecord.instanceId, out var sale, out _))
+            {
+                refund = sale.wood + sale.stone + sale.iron + sale.crystals;
+            }
+
+            _selectionUi?.Show(label, refund, level, maxLevel, upgradeTotal, canAfford, sellVerb);
+        }
+
+        private static bool TryGetOwnedRecord(PlacedStructure ps, out OwnedBaseStructure record)
+        {
+            record = null;
+            if (ps == null) return false;
+            var identity = ps.GetComponent<World.Camps.OwnedTownPlacedIdentity>();
+            if (identity == null) return false;
+            record = GameStateService.Instance?.State?.OwnedBase?.structures
+                .Find(s => s.instanceId == identity.InstanceId);
+            return record != null;
         }
 
         /// <summary>Drop the current selection (highlight + panel) and any in-progress move.</summary>
@@ -2704,6 +2744,48 @@ namespace DeNelle.Village
         {
             if (_selected == null) return;
             var ps = _selected;
+
+            // WO-1876 — owned town sell/clear go through the construction adapter, never BaseLayout.
+            if (IsOwnedTown)
+            {
+                if (!TryGetOwnedRecord(ps, out var ownedRecord))
+                {
+                    BuildFeedbackToast.Show("This structure cannot be sold here.");
+                    return;
+                }
+                int revision = GameStateService.Instance.State.OwnedBase.revision;
+                if (CapturedTownStanddown.IsClearableRubble(ownedRecord))
+                {
+                    if (!World.Camps.OwnedTownConstructionService.TryClearRubble(
+                            ownedRecord.instanceId, revision, out var credited, out var clearReason))
+                    {
+                        BuildFeedbackToast.Show(clearReason);
+                        FlowTrace.Warn("Build", "OWNED_TOWN_CLEAR refused: " + clearReason);
+                        return;
+                    }
+                    DeNelle.Core.Tutorial.TutorialSignals.Raise(
+                        DeNelle.Core.Tutorial.TutorialSignals.OwnedTownDesigned);
+                    BuildFeedbackToast.Show("Cleared — recovered " + Describe(credited) + ".");
+                    FlowTrace.Step("Build", "OWNED_TOWN_CLEAR id='" + ownedRecord.instanceId + "'");
+                    ClearSelection();
+                    _hud?.RefreshResources();
+                    return;
+                }
+                if (!World.Camps.OwnedTownConstructionService.TrySell(
+                        ownedRecord.instanceId, revision, out var soldCredit, out var sellReason))
+                {
+                    BuildFeedbackToast.Show(sellReason);
+                    FlowTrace.Warn("Build", "OWNED_TOWN_SELL refused: " + sellReason);
+                    return;
+                }
+                DeNelle.Core.Tutorial.TutorialSignals.Raise(
+                    DeNelle.Core.Tutorial.TutorialSignals.OwnedTownDesigned);
+                BuildFeedbackToast.Show("Sold — refunded " + Describe(soldCredit) + ".");
+                FlowTrace.Step("Build", "OWNED_TOWN_SELL id='" + ownedRecord.instanceId + "'");
+                ClearSelection();
+                _hud?.RefreshResources();
+                return;
+            }
 
             DeNelle.Core.Catalog.ResourceCost refund = RefundCostFor(ps);
 
@@ -2768,6 +2850,31 @@ namespace DeNelle.Village
             if (ps == null)
             {
                 FlowTrace.Warn("BuildUpgrade", "Upgrade tapped but no structure is selected.");
+                return;
+            }
+
+            // WO-1876 — owned upgrades open the existing page under OwnedTownJobKey, not cell keys.
+            if (IsOwnedTown)
+            {
+                if (!TryGetOwnedRecord(ps, out var ownedRecord) ||
+                    CapturedTownStanddown.IsClearableRubble(ownedRecord))
+                {
+                    BuildFeedbackToast.Show("Clear rubble for salvage — it has no upgrade.");
+                    FlowTrace.Warn("BuildUpgrade", "owned upgrade refused on missing/rubble selection.");
+                    return;
+                }
+                var ownedBase = GameStateService.Instance.State.OwnedBase;
+                string ownedKey = OwnedTownJobKey.Compose(ownedBase.baseId, ownedRecord.instanceId);
+                bool ownedOpened = DeNelle.Core.UI.PanelRouter.Open(
+                    DeNelle.Core.UI.PanelId.BuildingUpgrade, ownedKey);
+                if (ownedOpened)
+                {
+                    FlowTrace.Step("BuildUpgrade", "opened BuildingUpgrade for owned '" + ownedKey + "'.");
+                    return;
+                }
+                FlowTrace.Fail("BuildUpgrade",
+                    "PanelRouter.Open(BuildingUpgrade,'" + ownedKey + "') returned false.");
+                BuildFeedbackToast.Show("The upgrade page could not open. Please try again.");
                 return;
             }
 
@@ -3061,6 +3168,13 @@ namespace DeNelle.Village
                     "the selection was dropped between the tap and the callback.");
                 return;
             }
+            if (IsOwnedTown && TryGetOwnedRecord(_selected, out var moveRecord) &&
+                CapturedTownStanddown.IsClearableRubble(moveRecord))
+            {
+                BuildFeedbackToast.Show("Clear rubble for salvage — it cannot be moved.");
+                FlowTrace.Warn("BuildMove", "owned MOVE refused on rubble id='" + moveRecord.instanceId + "'.");
+                return;
+            }
             var entry = CatalogRegistry.Get(_selected.itemId);
             if (entry == null)
             {
@@ -3127,6 +3241,44 @@ namespace DeNelle.Village
                     "MOVE COMMIT ABORTED: the selection vanished mid-gesture. CancelMove re-occupies " +
                     "the ORIGIN cells, so the grid is left consistent and nothing is stranded.");
                 CancelMove();
+                return;
+            }
+
+            // WO-1876 — owned moves commit through OwnedTownDesignService, not story BaseLayout.
+            if (IsOwnedTown)
+            {
+                if (!TryGetOwnedRecord(_selected, out var ownedMove))
+                {
+                    BuildFeedbackToast.Show("This structure cannot be moved here.");
+                    CancelMove();
+                    return;
+                }
+                // Re-occupy origin before the adapter previews; TryBeginMove owns the live body.
+                _grid?.Occupy(_moveOriginCell, _selected.footprint, _selected.itemId);
+                _movingSelected = false;
+                _ghost?.Hide();
+                if (!World.Camps.OwnedTownDesignService.TryBeginMove(
+                        ownedMove.instanceId, snapped, (saved, failure) =>
+                        {
+                            if (this == null) return;
+                            if (!saved)
+                            {
+                                BuildFeedbackToast.Show(failure ?? "Move could not be saved.");
+                                FlowTrace.Warn("BuildMove", "OWNED_TOWN_MOVE failed: " + failure);
+                                ShowSelectionPanel(_selected);
+                                return;
+                            }
+                            DeNelle.Core.Tutorial.TutorialSignals.Raise(
+                                DeNelle.Core.Tutorial.TutorialSignals.OwnedTownDesigned);
+                            FlowTrace.Step("BuildMove",
+                                "OWNED_TOWN_MOVE saved id='" + ownedMove.instanceId + "'.");
+                            if (_selected != null) ShowSelectionPanel(_selected);
+                        }, out var moveReason))
+                {
+                    BuildFeedbackToast.Show(moveReason);
+                    FlowTrace.Warn("BuildMove", "OWNED_TOWN_MOVE refused: " + moveReason);
+                    ShowSelectionPanel(_selected);
+                }
                 return;
             }
 

@@ -1,6 +1,6 @@
 # WO-1877 — Armorer shop: each armor is a 2D plate (art + title + stats), not a generic shield
 
-**Status:** READY TO IMPLEMENT — minted 2026-09-18 (banner bumped 1877 -> 1878 in the same edit). Live Seeker frame `Logs/device/armorer-now.png` (pulled this session, 2.3 MB).
+**Status:** IMPLEMENTED — gated 2026-09-19 `COMPILE_GATE_OK` (`Builds/cg-wave1876.log`) + `REGRESSION_OK 588/588` (`Builds/r-wave1876c.log`). Family plates retarget existing ItemIcons (no byte-duplicate PNGs). FIXED after tester APK.
 
 **Owner, verbatim (2026-09-18, on that frame):** "this is the armor screen" / "no images for any item, and thats all armer is a 2D image and stats and a title" / "since we never change physical armor there is no reason we cannot create better versions of similar armor since they are all in code only"
 
