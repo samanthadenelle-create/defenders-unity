@@ -302,6 +302,21 @@ namespace DeNelle.Wallet
                         GameStateService.Instance?.BindWallet(key, attested);
                         FlowTrace.Step("Skin", $"Bound NeonDB identity key ({skin.IdentityKeyKind}) from wallet connect " +
                                                $"(cloud-attested={attested}).");
+                        if (attested && GameStateService.Instance != null)
+                        {
+                            try
+                            {
+                                await GameStateService.Instance.LoadFromBackend();
+                                FlowTrace.Step("Wallet",
+                                    "cloud LOAD after attested connect (same wallet, Seeker town on WebGL).");
+                            }
+                            catch (Exception loadEx)
+                            {
+                                FlowTrace.Warn("Wallet",
+                                    "cloud LOAD after connect threw (" + loadEx.GetType().Name + "): " +
+                                    loadEx.Message);
+                            }
+                        }
                     }
                     else
                     {
@@ -357,6 +372,7 @@ namespace DeNelle.Wallet
                 }
 
                 var svc = GameStateService.Instance;
+                bool attested = _wallet.IsRealSigningWallet;
                 if (svc == null)
                 {
                     FlowTrace.Warn("Wallet", "Login connect: GameStateService null - save not re-keyed.");
@@ -367,7 +383,6 @@ namespace DeNelle.Wallet
                     // wallet, which is the ONLY thing allowed to key a cloud save. The
                     // devnet stub reports false here, so an SDK-less build can never point
                     // every tester at one shared player_data row.
-                    bool attested = _wallet.IsRealSigningWallet;
                     Guard.Try("Wallet", "BindWallet(wallet address, login path)",
                         () => svc.BindWallet(account.Address, attested));
                     FlowTrace.Step("Wallet", $"Login connect bound save identity to wallet {account.ShortAddress} " +
@@ -418,6 +433,22 @@ namespace DeNelle.Wallet
                         $"session {(explicitConnect ? "mint" : "resume")} threw on the login path " +
                         $"({warmEx.GetType().Name}) - connect itself stands, but cloud SAVE will refuse " +
                         "fail-closed and queue offline until a session exists. " + warmEx.Message);
+                }
+
+                if (attested && svc != null)
+                {
+                    try
+                    {
+                        await svc.LoadFromBackend();
+                        FlowTrace.Step("Wallet",
+                            "cloud LOAD after login-path connect (same wallet, Seeker town on WebGL).");
+                    }
+                    catch (Exception loadEx)
+                    {
+                        FlowTrace.Warn("Wallet",
+                            "cloud LOAD after login connect threw (" + loadEx.GetType().Name + "): " +
+                            loadEx.Message);
+                    }
                 }
 
                 return new AuthOutcome { Success = true, UserId = account.Address, Email = string.Empty, Error = string.Empty };

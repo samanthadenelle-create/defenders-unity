@@ -2543,6 +2543,25 @@ namespace DeNelle.Core.State
                 bool localKnown  = localMs  > 0d;
                 bool serverWins  = serverKnown ? (serverMs > localMs) : !localKnown;
 
+                // Owner 2026-09-19: same Solana wallet on Seeker and WebGL. Connect must
+                // load the cloud town. A WebGL tutorial save is timestamp-newer and has
+                // no OwnedBase; recency alone would skip the Seeker capture forever.
+                // Exception is NARROW: cloud has a valid OwnedBase, local does not.
+                // Reset-epoch (Start New) still refuses above. WO-1448 still holds when
+                // both sides have a town or neither does.
+                bool cloudHasTown = server.OwnedBase != null
+                    && OwnedBaseProgression.Validate(server.OwnedBase, out _);
+                bool localHasTown = _state.OwnedBase != null
+                    && OwnedBaseProgression.Validate(_state.OwnedBase, out _);
+                if (!serverWins && cloudHasTown && !localHasTown)
+                {
+                    serverWins = true;
+                    FlowTrace.Step("Persist",
+                        "backend load: recency would keep LOCAL (server=" + serverMs.ToString("0") +
+                        " local=" + localMs.ToString("0") + ") but CLOUD HAS OwnedBase and this " +
+                        "device does not - applying the captured town (owner 2026-09-19).");
+                }
+
                 if (!serverWins)
                 {
                     FlowTrace.Step("Persist",
