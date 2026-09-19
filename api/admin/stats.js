@@ -141,6 +141,14 @@ function clampLimit(raw, def, max) {
 // from every distinct-player metric; counted separately so its size is visible.
 const ANON_ID = 'anonymous';
 
+// WO-1879. api/trace.js stores WebGL log batches as event_name='web_trace' with
+// player_id = the X-Trace-Session HEADER VALUE (a session UUID), not a human.
+// Measured 2026-09-19: 446 such ids in 30d, 0 overlap with session_start /
+// tutorial_step_enter / qualifying play. They are not players. The LIKE
+// 'X-Trace-%' idea does not work — the stored id is the session value, not the
+// header name. Exclude the EVENT. DAU from session_start is already clean.
+const TRACE_EVENT = 'web_trace';
+
 // first4…last4. Never widen this — the whole point is that a screenshot of the
 // dashboard cannot be used to look a player's wallet up on-chain.
 function maskId(id) {
@@ -222,6 +230,8 @@ const NOT_PLAY_EVENTS = [
     // the title screen into the "played" denominator, which is the exact mistake
     // the WO-1281 note above this list was written to prevent.
     'session_heartbeat', 'session_end',
+    // WO-1879. A web_trace row is a log batch, not an act and not a person.
+    'web_trace',
 ];
 
 // =============================================================================
@@ -611,9 +621,10 @@ module.exports = async (req, res) => {
         //     "was online at that moment".
         //   sessions_* — the session_start ROW count over the same windows (app
         //     opens, several per player per day).
-        //   new_players_per_day — players whose FIRST-EVER event of any kind
+        //   new_players_per_day — players whose FIRST-EVER non-trace event
         //     landed on that day. First-ever is computed over the WHOLE table, so
         //     someone who installed in June never re-counts as new in August.
+        //     web_trace session UUIDs are excluded (WO-1879).
         if (view === 'overview') {
             const active = await sql`
                 SELECT
@@ -646,7 +657,9 @@ module.exports = async (req, res) => {
 
             const totals = await sql`
                 SELECT COUNT(*)::bigint                  AS total_events,
-                       COUNT(DISTINCT player_id)::bigint AS total_ids_seen,
+                       COUNT(DISTINCT player_id) FILTER (
+                           WHERE player_id <> ${ANON_ID}
+                             AND event_name <> ${TRACE_EVENT})::bigint AS total_ids_seen,
                        MIN(received_at)                  AS first_event_at,
                        MAX(received_at)                  AS last_event_at
                 FROM analytics_events
@@ -657,6 +670,7 @@ module.exports = async (req, res) => {
                     SELECT player_id, MIN(received_at) AS first_seen
                     FROM analytics_events
                     WHERE player_id <> ${ANON_ID}
+                      AND event_name <> ${TRACE_EVENT}
                     GROUP BY player_id
                 )
                 SELECT date_trunc('day', first_seen)::date::text AS day,
@@ -732,6 +746,7 @@ module.exports = async (req, res) => {
                     SELECT player_id, MIN(received_at) AS first_seen
                     FROM analytics_events
                     WHERE player_id <> ${ANON_ID}
+                      AND event_name <> ${TRACE_EVENT}
                     GROUP BY player_id
                 ),
                 cohort AS (
@@ -920,6 +935,20 @@ module.exports = async (req, res) => {
                 ORDER BY 2 DESC
                 LIMIT 100`;
 
+            // WO-1880: start vs clear. started_players is 0 until a build that
+            // emits wave_started has been in the window.
+            const waveFunnel = await sql`
+                SELECT
+                    COUNT(DISTINCT player_id) FILTER (
+                        WHERE event_name = 'wave_started' AND player_id <> ${ANON_ID})::bigint AS started_players,
+                    COUNT(DISTINCT player_id) FILTER (
+                        WHERE event_name = 'wave_completed' AND player_id <> ${ANON_ID})::bigint AS completed_players
+                FROM analytics_events
+                WHERE event_name IN ('wave_started', 'wave_completed')
+                  AND received_at > NOW() - (${days} * INTERVAL '1 day')
+                  AND (${sliceIds}::text[] IS NULL OR player_id = ANY(${sliceIds}::text[]))
+                LIMIT 1`;
+
             const byId = (rows) => {
                 const m = new Map();
                 for (const r of rows) m.set(r.step_id == null ? '(no stepId)' : String(r.step_id), r);
@@ -986,6 +1015,12 @@ module.exports = async (req, res) => {
                 },
                 steps: steps,
                 contextual_hints: contextual,
+                waves: {
+                    note: 'WO-1880. wave_started is forward-only from the ship that emits it; '
+                        + 'a 0 started_players row means no build with the event has been in this window.',
+                    started_players: Number((waveFunnel[0] || {}).started_players || 0),
+                    completed_players: Number((waveFunnel[0] || {}).completed_players || 0),
+                },
                 note: 'tutorial_step_drop = the TutorialFlow watchdog auto-advanced a stuck player. '
                     + 'A step with drops is a step players cannot get past on their own.',
             }));
@@ -1986,6 +2021,7 @@ module.exports = async (req, res) => {
                     FROM analytics_events
                     WHERE NOT (player_id = ANY(${EXCLUDED}::text[]))
                       AND NOT (event_name = ANY(${SESSION_DURATION_EVENTS}::text[]))
+                      AND event_name <> ${TRACE_EVENT}
                       AND received_at > NOW() - (${days} * INTERVAL '1 day')
                     ORDER BY player_id, received_at
                     LIMIT ${SESSION_SCAN_CAP}
@@ -2071,6 +2107,7 @@ module.exports = async (req, res) => {
                     FROM analytics_events
                     WHERE NOT (player_id = ANY(${EXCLUDED}::text[]))
                       AND event_name <> 'session_start'
+                      AND event_name <> ${TRACE_EVENT}
                       -- WO-1842. session_end is now the LAST row of almost every
                       -- session, so without this every departing player's "last act"
                       -- would read session_end and this view would say nothing at all.
@@ -2154,8 +2191,10 @@ module.exports = async (req, res) => {
             // volume then every player figure above describes a minority.
             const coverage = await probe('identity_coverage', () => sql`
                 SELECT COUNT(*) FILTER (WHERE player_id = ${ANON_ID})::bigint  AS anonymous_events,
-                       COUNT(*) FILTER (WHERE player_id <> ${ANON_ID})::bigint AS identified_events,
-                       COUNT(DISTINCT player_id) FILTER (WHERE player_id <> ${ANON_ID})::bigint AS identified_ids,
+                       COUNT(*) FILTER (WHERE player_id <> ${ANON_ID}
+                         AND event_name <> ${TRACE_EVENT})::bigint AS identified_events,
+                       COUNT(DISTINCT player_id) FILTER (WHERE player_id <> ${ANON_ID}
+                         AND event_name <> ${TRACE_EVENT})::bigint AS identified_ids,
                        MIN(received_at)                                        AS first_event_at,
                        MAX(received_at)                                        AS last_event_at
                 FROM analytics_events
@@ -2205,8 +2244,12 @@ module.exports = async (req, res) => {
                 purpose: 'The five questions the landing view exists to answer: what is selling, do '
                     + 'players return, are they progressing, are they playing once and leaving, and '
                     + 'how long is a session.',
-                identity_rule: 'A player is one non-excluded player_id. "anonymous" is a single shared '
-                    + 'bucket (EventTracker.cs) and is never counted as a person.',
+                identity_rule: 'A player is one non-excluded player_id that is not a web_trace '
+                    + 'session UUID. "anonymous" is a single shared bucket (EventTracker.cs) and is '
+                    + 'never counted as a person. web_trace rows (api/trace.js) store player_id = '
+                    + 'X-Trace-Session (a log-batch header), not a human — event_name <> \'web_trace\' '
+                    + 'on every player-counting query (WO-1879). DAU from session_start was already '
+                    + 'clean; New Players / totals / last-act were not.',
                 exclusions: {
                     note: 'Operator and test traffic is removed server-side from every player metric. '
                         + 'The rule lives in the deployment environment, not in the request, so a '

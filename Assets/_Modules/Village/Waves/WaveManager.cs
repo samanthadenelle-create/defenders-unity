@@ -2080,6 +2080,9 @@ namespace DeNelle.Village
             // ever traced back to a latched Active phase, this line is where it was raised.
             SetPhase(WavePhase.Active, "StartWave");
             FlowTrace.Step("Wave", $"StartWave({waveId}) -> phase=Active (spawning begins)");
+            // WO-1880: without wave_started we cannot tell "never began wave 1" from
+            // "began and died". Same waveId property as wave_completed. Forward-only.
+            DeNelle.Core.Analytics.EventTracker.Track("wave_started", new { waveId });
 
             // WO-1773: fold the remote concurrency percent ONCE, here, so it cannot move underneath
             // a wave already draining reinforcements against it, and so the per-frame WaitUntil

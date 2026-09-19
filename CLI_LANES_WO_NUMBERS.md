@@ -189,7 +189,11 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-eighty-first pass): main line next free = **1879**.
+> ## RECONCILED 2026-09-19 (CLI, two-hundred-and-eighty-second pass): main line next free = **1882**.
+> *(CLI minted **WO-1879** web_trace excluded from player counts, **WO-1880** wave_started,
+> **WO-1881** founding_walk watchdog leak — owner triage 2026-09-19. Bumped 1879 -> 1882 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-18 (CLI, two-hundred-and-eighty-first pass): main line next free = **1879**.
 > *(CLI minted **WO-1878** 2026-09-18 — Iron Bastion is the hardest raid: fully upgraded archer +
 > wizard towers, forced encounters, landscape enclosure not a targetable outer wall, wow VFX.
 > Frame `Logs/device/issue-now.png`. Bumped 1878 -> 1879 in this SAME edit.)*

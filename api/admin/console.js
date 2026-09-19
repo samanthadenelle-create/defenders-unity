@@ -1073,7 +1073,7 @@ const PAGE_TEMPLATE = `<!DOCTYPE html>
       '<div class="coverage" aria-label="Identified telemetry coverage ' + coverage + ' percent"><span style="width:' + coverage + '%"></span></div>' +
       '<p class="note">' + esc((o.anonymous||{}).note || '') + '</p></div>';
     var fresh = (o.new_players_per_day || []).slice(0,7);
-    h += '<div class="card"><h2>New players</h2><p class="note">First-ever identified event, grouped by UTC day.</p>' +
+    h += '<div class="card"><h2>New players</h2><p class="note">First-ever identified non-trace event, grouped by UTC day. web_trace session UUIDs are not players (WO-1879).</p>' +
       '<div class="scroll"><table><tr><th>Day</th><th>New players</th><th>Active players</th><th>Sessions</th></tr>';
     if (!fresh.length) h += '<tr><td colspan="4" class="none">No new identified players in this window.</td></tr>';
     fresh.forEach(function(r){

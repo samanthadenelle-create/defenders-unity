@@ -641,6 +641,14 @@ namespace DeNelle.Village
 
         private HeroLocomotion _hero;
         private WaveManager _wave;
+        // WO-1881: founding_walk watchdog was dropping players who USED the stick but
+        // missed the latched gate. Snapshot at enter; if they walked this far, rescue
+        // as a real complete (first valid input), not a drop. AFK still drops.
+        // WO-962 forbids widening ReachedRadius / WatchdogSeconds — this is not that.
+        private Vector3 _stepEnterHeroPos;
+        private bool _stepEnterHeroPosValid;
+        private const float WalkValidInputMeters = 8f;
+        private const string FoundingWalkStepId = "founding_walk";
 
         // Scripted town-wave runtime state (step 'town_wave', WO-T4).
         private TutorialWaveSpawner _tutorialWave;
@@ -893,6 +901,13 @@ namespace DeNelle.Village
         private void EnterStep(TutorialStepDef step)
         {
             _stepEnteredAt = Time.unscaledTime;
+            _stepEnterHeroPosValid = false;
+            if (_hero == null) _hero = FindAnyObjectByType<HeroLocomotion>();
+            if (_hero != null)
+            {
+                _stepEnterHeroPos = _hero.transform.position;
+                _stepEnterHeroPosValid = true;
+            }
             _stepClock.Reset();                    // WO-1036: a fresh PLAYED budget for this beat
             _suspendJumpTraced = false;
             _modalExcludedSeconds = 0f;            // WO-1414 D: per-step, like the clock it annotates
@@ -2514,6 +2529,12 @@ namespace DeNelle.Village
                     return;
                 }
             }
+            // WO-1881: if the hero landed after EnterStep, this is the walk origin.
+            if (!_stepEnterHeroPosValid)
+            {
+                _stepEnterHeroPos = _hero.transform.position;
+                _stepEnterHeroPosValid = true;
+            }
 
             // WO-962: idempotent re-latch. EnterStep already latched this anchor; this call
             // returns immediately when it did, and only takes effect when the anchor was NOT
@@ -2645,6 +2666,22 @@ namespace DeNelle.Village
             }
         }
 
+        private bool WalkRescueAsComplete()
+        {
+            if (_step == null) return false;
+            if (!string.Equals(_step.Id, FoundingWalkStepId, StringComparison.OrdinalIgnoreCase))
+                return false;
+            return WalkDistanceFromEnter() >= WalkValidInputMeters;
+        }
+
+        private float WalkDistanceFromEnter()
+        {
+            if (!_stepEnterHeroPosValid) return 0f;
+            if (_hero == null) _hero = FindAnyObjectByType<HeroLocomotion>();
+            if (_hero == null) return 0f;
+            return Vector3.Distance(_hero.transform.position, _stepEnterHeroPos);
+        }
+
         private void TickWatchdog()
         {
             if (_step == null) return;
@@ -2721,6 +2758,16 @@ namespace DeNelle.Village
             string stuckId  = _step.Id;
             string awaited  = _awaitSignal;
             float  idle     = _stepClock.Charged;                        // WO-1036: PLAYED, charged time
+            // WO-1881: founding_walk teaches the stick BY DOING. If they walked, they
+            // did the lesson even if they missed the latched gate. Complete, don't drop.
+            if (WalkRescueAsComplete())
+            {
+                FlowTrace.Step("Tutorial",
+                    $"STEP-WALK-VALID :: {stuckId} — hero moved {WalkDistanceFromEnter():0.0}m " +
+                    $"(need {WalkValidInputMeters:0}m) without '{awaited}'; completing as played, not dropped.");
+                CompleteCurrentStep(skipped: false);
+                return;
+            }
             float  wall     = Time.unscaledTime - _stepEnteredAt;        // what the old line reported
             float  excluded = _stepClock.Excluded;
             float  modalOut = _modalExcludedSeconds;                     // WO-1414 D: WHY, not just how much
