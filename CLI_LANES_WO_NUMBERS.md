@@ -189,7 +189,15 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-19 (CLI, two-hundred-and-eighty-fifth pass): main line next free = **1886**.
+> ## RECONCILED 2026-09-19 (CLI, two-hundred-and-eighty-seventh pass): main line next free = **1888**.
+> *(CLI minted **WO-1887** WebGL Connect Wallet uses Magicblock SolanaWalletAdapter, not StubWalletProvider.
+> Bumped 1887 -> 1888 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-19 (CLI, two-hundred-and-eighty-sixth pass): main line next free = **1887**.
+> *(CLI minted **WO-1886** hide compass on raids so the top band is troop tray real estate.
+> Bumped 1886 -> 1887 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-19 (CLI, two-hundred-and-eighty-fifth pass): main line next free = **1886**.
 > *(CLI minted **WO-1885** raid HUD: troop tray + Deploy All to the TOP; Breach + Rally bottom
 > middle. Owner frame of troops blocking the combat view. Bumped 1885 -> 1886 in this SAME edit.)*
 >

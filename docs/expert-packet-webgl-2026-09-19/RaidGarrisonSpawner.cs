@@ -106,14 +106,6 @@ namespace DeNelle.Village.World.Camps
         private Color _savedAmbientLight;
         private float _savedAmbientIntensity;
         private UnityEngine.Rendering.AmbientMode _savedAmbientMode;
-        private bool _savedFog;
-        private FogMode _savedFogMode;
-        private Color _savedFogColor;
-        private float _savedFogDensity;
-        private float _savedFogStart;
-        private float _savedFogEnd;
-        private Light _raidSun;
-        private float _savedSunIntensity;
 
         // -- SPIRE ALARM (WO-1830) ---------------------------------------------
         // The brains this spawner built, kept alongside _garrison so the alarm fan-out never needs
@@ -163,11 +155,6 @@ namespace DeNelle.Village.World.Camps
             for (int i = 0; i < _atmosphereFx.Count; i++)
                 _atmosphereFx[i]?.Stop(true);
             _atmosphereFx.Clear();
-            RestoreRaidSky();
-        }
-
-        private void OnApplicationQuit()
-        {
             RestoreRaidSky();
         }
 
@@ -715,10 +702,9 @@ namespace DeNelle.Village.World.Camps
         private const string GroundFogKey = "PP_GroundFog";
         // Filled yard: centre + inner ring + outer ring (1+4+4). Stays under the village
         // loop ceiling with the sky layer so combat auras still have headroom.
-        // Engine fog (RenderSettings.fog) is the ground haze. Particles are wisps only.
         private const int GroundFogCentre = 1;
-        private const int GroundFogInnerCount = 0;
-        private const int GroundFogOuterCount = 0;
+        private const int GroundFogInnerCount = 4;
+        private const int GroundFogOuterCount = 4;
 
         /// <summary>Dark slate storm sky layer — luminance-led, colorblind-safe.</summary>
         private static readonly Color StormCloudTint = new Color(0.32f, 0.34f, 0.40f, 0.95f);
@@ -728,10 +714,7 @@ namespace DeNelle.Village.World.Camps
 
         /// <summary>Raid camera clear / ambient storm tint (restored on teardown).</summary>
         private static readonly Color RaidStormSky = new Color(0.22f, 0.24f, 0.30f, 1f);
-        private static readonly Color RaidStormAmbient = new Color(0.15f, 0.16f, 0.20f, 1f);
-        private static readonly Color RaidEngineFogColor = new Color(0.42f, 0.46f, 0.52f, 1f);
-        private const float RaidEngineFogDensity = 0.045f;
-        private const float RaidSunIntensityMul = 0.55f;
+        private static readonly Color RaidStormAmbient = new Color(0.28f, 0.30f, 0.36f, 1f);
 
         private void SpawnAtmosphereFx(float baseRadius)
         {
@@ -805,8 +788,8 @@ namespace DeNelle.Village.World.Camps
         }
 
         /// <summary>
-        /// Raid-only engine fog + darker ambient + dimmed sun. Restored in
-        /// <see cref="RestoreRaidSky"/>. Particles are wisps only.
+        /// Raid-only camera SolidColor + ambient drop. Restored in <see cref="RestoreRaidSky"/> —
+        /// never writes a skybox material, never leaves ambient dirty for the hub.
         /// </summary>
         private void ApplyRaidSky()
         {
@@ -825,42 +808,26 @@ namespace DeNelle.Village.World.Camps
                 _savedAmbientLight = RenderSettings.ambientLight;
                 _savedAmbientIntensity = RenderSettings.ambientIntensity;
                 _savedAmbientMode = RenderSettings.ambientMode;
-                _savedFog = RenderSettings.fog;
-                _savedFogMode = RenderSettings.fogMode;
-                _savedFogColor = RenderSettings.fogColor;
-                _savedFogDensity = RenderSettings.fogDensity;
-                _savedFogStart = RenderSettings.fogStartDistance;
-                _savedFogEnd = RenderSettings.fogEndDistance;
-                _raidSun = null;
-                _savedSunIntensity = 0f;
-                var lights = UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None);
-                for (int i = 0; i < lights.Length; i++)
-                {
-                    if (lights[i] == null || lights[i].type != LightType.Directional) continue;
-                    _raidSun = lights[i];
-                    _savedSunIntensity = lights[i].intensity;
-                    break;
-                }
                 _raidSkyOverridden = true;
 
-                // Keep Skybox clear flags so the sky still reads as a sky. SolidColor
-                // looked like a bug (owner 2026-09-19 raid PNG: bright blue + no ground haze).
                 if (_raidSkyCam != null)
+                {
+                    _raidSkyCam.clearFlags = CameraClearFlags.SolidColor;
                     _raidSkyCam.backgroundColor = RaidStormSky;
+                }
+                else
+                {
+                    FlowTrace.Warn("Garrison",
+                        $"'{configId}' ApplyRaidSky: Camera.main null — ambient still dropped; " +
+                        "cloud layer must carry the storm read alone.");
+                }
 
                 RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
                 RenderSettings.ambientLight = RaidStormAmbient;
-                RenderSettings.ambientIntensity = 0.6f;
-                RenderSettings.fog = true;
-                RenderSettings.fogMode = FogMode.ExponentialSquared;
-                RenderSettings.fogColor = RaidEngineFogColor;
-                RenderSettings.fogDensity = RaidEngineFogDensity;
-                if (_raidSun != null)
-                    _raidSun.intensity = _savedSunIntensity * RaidSunIntensityMul;
+                RenderSettings.ambientIntensity = 0.85f;
                 FlowTrace.Step("Garrison",
-                    $"'{configId}' raid sky: engine fog on density={RaidEngineFogDensity} " +
-                    $"ambientFlat={RaidStormAmbient} sunMul={RaidSunIntensityMul} " +
-                    "(saved for restore; hub untouched).");
+                    $"'{configId}' raid sky darkened: camClear=SolidColor bg={RaidStormSky} " +
+                    $"ambientFlat={RaidStormAmbient} (saved for restore; hub untouched).");
             });
         }
 
@@ -877,16 +844,8 @@ namespace DeNelle.Village.World.Camps
                 RenderSettings.ambientMode = _savedAmbientMode;
                 RenderSettings.ambientLight = _savedAmbientLight;
                 RenderSettings.ambientIntensity = _savedAmbientIntensity;
-                RenderSettings.fog = _savedFog;
-                RenderSettings.fogMode = _savedFogMode;
-                RenderSettings.fogColor = _savedFogColor;
-                RenderSettings.fogDensity = _savedFogDensity;
-                RenderSettings.fogStartDistance = _savedFogStart;
-                RenderSettings.fogEndDistance = _savedFogEnd;
-                if (_raidSun != null)
-                    _raidSun.intensity = _savedSunIntensity;
                 FlowTrace.Step("Garrison",
-                    $"'{configId}' raid sky restored (fog+ambient+sun; hub safe).");
+                    $"'{configId}' raid sky restored (camera clear + ambient back; hub safe).");
             });
             _raidSkyOverridden = false;
             _raidSkyCam = null;
