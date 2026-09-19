@@ -189,7 +189,12 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-eightieth pass): main line next free = **1878**.
+> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-eighty-first pass): main line next free = **1879**.
+> *(CLI minted **WO-1878** 2026-09-18 — Iron Bastion is the hardest raid: fully upgraded archer +
+> wizard towers, forced encounters, landscape enclosure not a targetable outer wall, wow VFX.
+> Frame `Logs/device/issue-now.png`. Bumped 1878 -> 1879 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-18 (CLI, two-hundred-and-eightieth pass): main line next free = **1878**.
 > *(CLI minted **WO-1877** 2026-09-18 — Armorer shop shows each armor's 2D plate (title+stats+art),
 > not the generic shield glyph; body never mesh-swaps (owner: armor is code-only so similar
 > pieces can share a silhouette with better 2D versions). Bumped 1877 -> 1878 in this SAME edit.)*
