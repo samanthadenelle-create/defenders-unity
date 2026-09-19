@@ -4957,7 +4957,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761273
-    m_Localized: Sign in with your wallet to see your Circle.
+    m_Localized: Connectez-vous avec votre portefeuille pour voir votre Cercle.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761274
@@ -5111,78 +5111,78 @@ MonoBehaviour:
       m_Items:
       - rid: 7338888477077143555
   - m_Id: 44636558924533760
-    m_Localized: Sign in with your wallet to open Circle Chat.
+    m_Localized: Connectez-vous avec votre portefeuille pour ouvrir le chat du Cercle.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088192
-    m_Localized: SIGN IN
+    m_Localized: CONNEXION
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088193
-    m_Localized: The Circle of {0} held vigil.
+    m_Localized: Le Cercle de {0} a tenu la veille.
     m_Metadata:
       m_Items:
       - rid: 7338888477077143555
   - m_Id: 44636558958088194
-    m_Localized: The Circle of {0} has chosen {1}. The Heart has heard.
+    m_Localized: Le Cercle de {0} a choisi {1}. Le Coeur a entendu.
     m_Metadata:
       m_Items:
       - rid: 7338888477077143555
   - m_Id: 44636558958088195
-    m_Localized: CONTINUE
+    m_Localized: CONTINUER
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088196
-    m_Localized: Watch the last vigil
+    m_Localized: Revoir la derniere veille
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088197
-    m_Localized: 'The vigil continues. Next epoch: {0}.'
+    m_Localized: 'La veille continue. Prochaine epoque : {0}.'
     m_Metadata:
       m_Items:
       - rid: 7338888477077143555
   - m_Id: 44636558958088198
-    m_Localized: Ember
+    m_Localized: Braise
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088199
-    m_Localized: Flame
+    m_Localized: Flamme
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088200
-    m_Localized: Beacon
+    m_Localized: Balise
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088201
-    m_Localized: Pyre
+    m_Localized: Bucher
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088202
-    m_Localized: Dawn
+    m_Localized: Aube
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088203
-    m_Localized: A spark moves beneath the roots. The Circle has begun.
+    m_Localized: Une etincelle se deplace sous les racines. Le Cercle a commence.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088204
-    m_Localized: The Circle keeps its watch. The Heart is warm.
+    m_Localized: Le Cercle tient sa veille. Le Coeur est chaud.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088205
-    m_Localized: The Heart answers. Light climbs the trunk.
+    m_Localized: Le Coeur repond. La lumiere gravit le tronc.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088206
-    m_Localized: The crown blooms. The ancestors are near.
+    m_Localized: La cime fleurit. Les ancetres sont proches.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088207
-    m_Localized: The canopy shifts. The Circle has been heard.
+    m_Localized: La canopee bascule. Le Cercle a ete entendu.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088208
-    m_Localized: Connect your wallet to see your Circle.
+    m_Localized: Connectez votre portefeuille pour voir votre Cercle.
     m_Metadata:
       m_Items: []
   references:

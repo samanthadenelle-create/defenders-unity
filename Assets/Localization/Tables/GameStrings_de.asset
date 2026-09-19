@@ -4932,7 +4932,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761273
-    m_Localized: Sign in with your wallet to see your Circle.
+    m_Localized: Melde dich mit deiner Wallet an, um deinen Zirkel zu sehen.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761274
@@ -5086,78 +5086,78 @@ MonoBehaviour:
       m_Items:
       - rid: 7338888477077143554
   - m_Id: 44636558924533760
-    m_Localized: Sign in with your wallet to open Circle Chat.
+    m_Localized: Melde dich mit deiner Wallet an, um den Zirkel-Chat zu oeffnen.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088192
-    m_Localized: SIGN IN
+    m_Localized: ANMELDEN
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088193
-    m_Localized: The Circle of {0} held vigil.
+    m_Localized: Der Zirkel von {0} hielt Wache.
     m_Metadata:
       m_Items:
       - rid: 7338888477077143554
   - m_Id: 44636558958088194
-    m_Localized: The Circle of {0} has chosen {1}. The Heart has heard.
+    m_Localized: Der Zirkel von {0} hat {1} gewaehlt. Das Herz hat gehoert.
     m_Metadata:
       m_Items:
       - rid: 7338888477077143554
   - m_Id: 44636558958088195
-    m_Localized: CONTINUE
+    m_Localized: WEITER
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088196
-    m_Localized: Watch the last vigil
+    m_Localized: Letzte Wache ansehen
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088197
-    m_Localized: 'The vigil continues. Next epoch: {0}.'
+    m_Localized: 'Die Wache geht weiter. Naechste Epoche: {0}.'
     m_Metadata:
       m_Items:
       - rid: 7338888477077143554
   - m_Id: 44636558958088198
-    m_Localized: Ember
+    m_Localized: Glut
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088199
-    m_Localized: Flame
+    m_Localized: Flamme
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088200
-    m_Localized: Beacon
+    m_Localized: Leuchtfeuer
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088201
-    m_Localized: Pyre
+    m_Localized: Scheiterhaufen
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088202
-    m_Localized: Dawn
+    m_Localized: Morgengrauen
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088203
-    m_Localized: A spark moves beneath the roots. The Circle has begun.
+    m_Localized: Ein Funke bewegt sich unter den Wurzeln. Der Zirkel hat begonnen.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088204
-    m_Localized: The Circle keeps its watch. The Heart is warm.
+    m_Localized: Der Zirkel haelt Wache. Das Herz ist warm.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088205
-    m_Localized: The Heart answers. Light climbs the trunk.
+    m_Localized: Das Herz antwortet. Licht steigt den Stamm hinauf.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088206
-    m_Localized: The crown blooms. The ancestors are near.
+    m_Localized: Die Krone blueht. Die Ahnen sind nah.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088207
-    m_Localized: The canopy shifts. The Circle has been heard.
+    m_Localized: Das Kronendach verschiebt sich. Der Zirkel wurde gehoert.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088208
-    m_Localized: Connect your wallet to see your Circle.
+    m_Localized: Verbinde deine Wallet, um deinen Zirkel zu sehen.
     m_Metadata:
       m_Items: []
   references:

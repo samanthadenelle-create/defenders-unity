@@ -4921,7 +4921,7 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761273
-    m_Localized: Sign in with your wallet to see your Circle.
+    m_Localized: Entre com sua carteira para ver seu Circulo.
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761274
@@ -5075,78 +5075,78 @@ MonoBehaviour:
       m_Items:
       - rid: 7338888477077143553
   - m_Id: 44636558924533760
-    m_Localized: Sign in with your wallet to open Circle Chat.
+    m_Localized: Entre com sua carteira para abrir o chat do Circulo.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088192
-    m_Localized: SIGN IN
+    m_Localized: ENTRAR
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088193
-    m_Localized: The Circle of {0} held vigil.
+    m_Localized: O Circulo de {0} manteve a vigilia.
     m_Metadata:
       m_Items:
       - rid: 7338888477077143553
   - m_Id: 44636558958088194
-    m_Localized: The Circle of {0} has chosen {1}. The Heart has heard.
+    m_Localized: O Circulo de {0} escolheu {1}. O Coracao ouviu.
     m_Metadata:
       m_Items:
       - rid: 7338888477077143553
   - m_Id: 44636558958088195
-    m_Localized: CONTINUE
+    m_Localized: CONTINUAR
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088196
-    m_Localized: Watch the last vigil
+    m_Localized: Assistir a ultima vigilia
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088197
-    m_Localized: 'The vigil continues. Next epoch: {0}.'
+    m_Localized: 'A vigilia continua. Proxima epoca: {0}.'
     m_Metadata:
       m_Items:
       - rid: 7338888477077143553
   - m_Id: 44636558958088198
-    m_Localized: Ember
+    m_Localized: Brasa
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088199
-    m_Localized: Flame
+    m_Localized: Chama
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088200
-    m_Localized: Beacon
+    m_Localized: Farol
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088201
-    m_Localized: Pyre
+    m_Localized: Pira
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088202
-    m_Localized: Dawn
+    m_Localized: Alvorecer
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088203
-    m_Localized: A spark moves beneath the roots. The Circle has begun.
+    m_Localized: "Uma fa\xEDsca se move sob as raizes. O Circulo comecou."
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088204
-    m_Localized: The Circle keeps its watch. The Heart is warm.
+    m_Localized: O Circulo mantem a vigilia. O Coracao esta quente.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088205
-    m_Localized: The Heart answers. Light climbs the trunk.
+    m_Localized: O Coracao responde. A luz sobe pelo tronco.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088206
-    m_Localized: The crown blooms. The ancestors are near.
+    m_Localized: A copa floresce. Os ancestrais estao perto.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088207
-    m_Localized: The canopy shifts. The Circle has been heard.
+    m_Localized: O dossel se desloca. O Circulo foi ouvido.
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088208
-    m_Localized: Connect your wallet to see your Circle.
+    m_Localized: Conecte sua carteira para ver seu Circulo.
     m_Metadata:
       m_Items: []
   references:

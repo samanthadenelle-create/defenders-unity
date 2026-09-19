@@ -5980,7 +5980,9 @@ MonoBehaviour:
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761273
-    m_Localized: Sign in with your wallet to see your Circle.
+    m_Localized: "\u0412\u043E\u0439\u0434\u0438\u0442\u0435 \u0441 \u043A\u043E\u0448\u0435\u043B\u044C\u043A\u043E\u043C,
+      \u0447\u0442\u043E\u0431\u044B \u0443\u0432\u0438\u0434\u0435\u0442\u044C \u0441\u0432\u043E\u0439
+      \u041A\u0440\u0443\u0433."
     m_Metadata:
       m_Items: []
   - m_Id: 44124330363761274
@@ -6134,78 +6136,94 @@ MonoBehaviour:
       m_Items:
       - rid: 7338888477077143556
   - m_Id: 44636558924533760
-    m_Localized: Sign in with your wallet to open Circle Chat.
+    m_Localized: "\u0412\u043E\u0439\u0434\u0438\u0442\u0435 \u0441 \u043A\u043E\u0448\u0435\u043B\u044C\u043A\u043E\u043C,
+      \u0447\u0442\u043E\u0431\u044B \u043E\u0442\u043A\u0440\u044B\u0442\u044C \u0447\u0430\u0442
+      \u041A\u0440\u0443\u0433\u0430."
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088192
-    m_Localized: SIGN IN
+    m_Localized: "\u0412\u041E\u0419\u0422\u0418"
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088193
-    m_Localized: The Circle of {0} held vigil.
+    m_Localized: "\u041A\u0440\u0443\u0433 {0} \u0434\u0435\u0440\u0436\u0430\u043B
+      \u0441\u0442\u0440\u0430\u0436\u0443."
     m_Metadata:
       m_Items:
       - rid: 7338888477077143556
   - m_Id: 44636558958088194
-    m_Localized: The Circle of {0} has chosen {1}. The Heart has heard.
+    m_Localized: "\u041A\u0440\u0443\u0433 {0} \u0432\u044B\u0431\u0440\u0430\u043B:
+      {1}. \u0421\u0435\u0440\u0434\u0446\u0435 \u0443\u0441\u043B\u044B\u0448\u0430\u043B\u043E."
     m_Metadata:
       m_Items:
       - rid: 7338888477077143556
   - m_Id: 44636558958088195
-    m_Localized: CONTINUE
+    m_Localized: "\u0414\u0410\u041B\u0415\u0415"
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088196
-    m_Localized: Watch the last vigil
+    m_Localized: "\u0421\u043C\u043E\u0442\u0440\u0435\u0442\u044C \u043F\u043E\u0441\u043B\u0435\u0434\u043D\u044E\u044E
+      \u0441\u0442\u0440\u0430\u0436\u0443"
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088197
-    m_Localized: 'The vigil continues. Next epoch: {0}.'
+    m_Localized: "\u0421\u0442\u0440\u0430\u0436\u0430 \u043F\u0440\u043E\u0434\u043E\u043B\u0436\u0430\u0435\u0442\u0441\u044F.
+      \u0421\u043B\u0435\u0434\u0443\u044E\u0449\u0430\u044F \u044D\u043F\u043E\u0445\u0430:
+      {0}."
     m_Metadata:
       m_Items:
       - rid: 7338888477077143556
   - m_Id: 44636558958088198
-    m_Localized: Ember
+    m_Localized: "\u0423\u0433\u043E\u043B\u044C"
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088199
-    m_Localized: Flame
+    m_Localized: "\u041F\u043B\u0430\u043C\u044F"
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088200
-    m_Localized: Beacon
+    m_Localized: "\u041C\u0430\u044F\u043A"
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088201
-    m_Localized: Pyre
+    m_Localized: "\u041A\u043E\u0441\u0442\u0451\u0440"
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088202
-    m_Localized: Dawn
+    m_Localized: "\u0420\u0430\u0441\u0441\u0432\u0435\u0442"
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088203
-    m_Localized: A spark moves beneath the roots. The Circle has begun.
+    m_Localized: "\u0418\u0441\u043A\u0440\u0430 \u0434\u0432\u0438\u0436\u0435\u0442\u0441\u044F
+      \u043F\u043E\u0434 \u043A\u043E\u0440\u043D\u044F\u043C\u0438. \u041A\u0440\u0443\u0433
+      \u043D\u0430\u0447\u0430\u043B\u0441\u044F."
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088204
-    m_Localized: The Circle keeps its watch. The Heart is warm.
+    m_Localized: "\u041A\u0440\u0443\u0433 \u0434\u0435\u0440\u0436\u0438\u0442 \u0441\u0442\u0440\u0430\u0436\u0443.
+      \u0421\u0435\u0440\u0434\u0446\u0435 \u0442\u0435\u043F\u043B\u043E\u0435."
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088205
-    m_Localized: The Heart answers. Light climbs the trunk.
+    m_Localized: "\u0421\u0435\u0440\u0434\u0446\u0435 \u043E\u0442\u0432\u0435\u0447\u0430\u0435\u0442.
+      \u0421\u0432\u0435\u0442 \u043F\u043E\u0434\u043D\u0438\u043C\u0430\u0435\u0442\u0441\u044F
+      \u043F\u043E \u0441\u0442\u0432\u043E\u043B\u0443."
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088206
-    m_Localized: The crown blooms. The ancestors are near.
+    m_Localized: "\u041A\u0440\u043E\u043D\u0430 \u0446\u0432\u0435\u0442\u0451\u0442.
+      \u041F\u0440\u0435\u0434\u043A\u0438 \u0431\u043B\u0438\u0437\u043A\u043E."
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088207
-    m_Localized: The canopy shifts. The Circle has been heard.
+    m_Localized: "\u041A\u0440\u043E\u043D\u0430 \u0441\u0434\u0432\u0438\u0433\u0430\u0435\u0442\u0441\u044F.
+      \u041A\u0440\u0443\u0433 \u0443\u0441\u043B\u044B\u0448\u0430\u043D."
     m_Metadata:
       m_Items: []
   - m_Id: 44636558958088208
-    m_Localized: Connect your wallet to see your Circle.
+    m_Localized: "\u041F\u043E\u0434\u043A\u043B\u044E\u0447\u0438\u0442\u0435 \u043A\u043E\u0448\u0435\u043B\u0451\u043A,
+      \u0447\u0442\u043E\u0431\u044B \u0443\u0432\u0438\u0434\u0435\u0442\u044C \u0441\u0432\u043E\u0439
+      \u041A\u0440\u0443\u0433."
     m_Metadata:
       m_Items: []
   references:
