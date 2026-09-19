@@ -100,7 +100,8 @@ namespace DeNelle.HUD
         {
             switch (page.Kind)
             {
-                case PlayerDeckKind.Realm: return HasOwnedTown ? "" : LocalText.Get("hud.realm_deck.subtitle");
+                // WO-1884: Homes chip is the ONE public owned-town door; Realm keeps its subtitle.
+                case PlayerDeckKind.Realm: return LocalText.Get("hud.realm_deck.subtitle");
                 // WO-1523: the line names what the deck actually carries. While no cosmetic is
                 // unlocked the Wardrobe card is not built, and a purpose line that still promised a
                 // wardrobe would send the player hunting for a section that is not on the screen -
@@ -122,27 +123,9 @@ namespace DeNelle.HUD
 
         protected override void RenderPage(PlayerDeckPage page, RectTransform content)
         {
-            if (page.Kind == PlayerDeckKind.Realm && HasOwnedTown)
-            {
-                var visit = ElarionUiKit.BuildObsidianButton(content, LocalText.Get("ownedTown.enter"),
-                    ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
-                    new Vector2(.30f, .88f), new Vector2(.70f, .88f), () => {
-                        Close(); DeNelle.Core.SceneRouter.GoOwnedTown();
-                    });
-                if (visit != null)
-                {
-                    visit.gameObject.name = "OwnedTownReturn";
-                    ((RectTransform)visit.transform).sizeDelta = new Vector2(0, ElarionUiKit.MinTouchPx + 2f);
-                    var label = visit.GetComponentInChildren<TMP_Text>();
-                    if (label != null)
-                    {
-                        label.rectTransform.anchorMin = Vector2.zero;
-                        label.rectTransform.anchorMax = Vector2.one;
-                        label.rectTransform.offsetMin = label.rectTransform.offsetMax = Vector2.zero;
-                        ElarionUiKit.FitSingleLine(label, 30f, 40f);
-                    }
-                }
-            }
+            // WO-1884: the Realm-deck yellow "Enter your town" button is RETIRED. The Homes
+            // chip on HudKit is the single public door (PanelId.Homes). PanelDoorRegression
+            // does not need that constructor — HomesSwitcherPanelBootstrap is the D2 root.
             var cards = CardsFor(page.Kind);
             var gridGo = new GameObject(page.Kind + "CardGrid", typeof(RectTransform), typeof(GridLayoutGroup));
             var grid = (RectTransform)gridGo.transform;
@@ -150,7 +133,7 @@ namespace DeNelle.HUD
             grid.anchorMin = new Vector2(0.02f, 0.03f);
             // Reserve the upper body band for the workspace purpose line. The first
             // measured capture proved a .97 top edge let row one cover that line.
-            grid.anchorMax = new Vector2(0.98f, page.Kind == PlayerDeckKind.Realm && HasOwnedTown ? .74f : .82f);
+            grid.anchorMax = new Vector2(0.98f, .82f);
             grid.offsetMin = grid.offsetMax = Vector2.zero;
             var layout = gridGo.GetComponent<GridLayoutGroup>();
             layout.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
@@ -1039,9 +1022,6 @@ namespace DeNelle.HUD
             FlowTrace.Step("Journey", "deck card=" + card + " subtitle='" + subtitle + "'");
             return subtitle;
         }
-
-        private static bool HasOwnedTown => DeNelle.Core.State.OwnedBaseProgression.Validate(
-            DeNelle.Core.State.GameStateService.Instance?.State?.OwnedBase, out _);
 
         protected override void OnDestroy()
         {

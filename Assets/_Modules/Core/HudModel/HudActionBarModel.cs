@@ -563,6 +563,13 @@ namespace DeNelle.Core.HudModel
             return 0;   // build / hostile / modal / unknown: the bar is down
         }
 
+        /// <summary>WO-1884 — captured town exists. Homes chip reads this, not GameStateService.</summary>
+        public static bool HasOwnedTownHome()
+        {
+            return DeNelle.Core.State.OwnedBaseProgression.Validate(
+                DeNelle.Core.State.GameStateService.Instance?.State?.OwnedBase, out _);
+        }
+
         private static int Bit(ActionBarButtonId id) => 1 << (int)id;
 
         private string DescribeActive()

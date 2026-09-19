@@ -202,6 +202,16 @@ namespace DeNelle.HUD.Kit
         // needs to be tappable above the two HUD docks.
         private const int SafetyGearSortingOrder = 4700;
 
+        // WO-1884: Homes switcher chip (gear-family persistent door). Own root canvas so
+        // ApplyPosture / hud-areas.json occupancy cannot hide it; shown only while
+        // OwnedBaseProgression.Validate is true on hub or owned-town scenes.
+        private GameObject _homesChipCanvas;
+        private Button _homesChipButton;
+        private bool _homesChipWantVisible;
+        private float _homesChipPollTimer;
+        private const float HomesChipPollSeconds = 0.5f;
+        private const int HomesChipSortingOrder = 4700;
+
         private GameObject _heartExpandedCanvas;
         private TMP_Text _heartExpandedName;
         private TMP_Text _heartExpandedObjective;
@@ -636,6 +646,10 @@ namespace DeNelle.HUD.Kit
             // See the field block above for why this must not depend on anything below it.
             Guard.Try("Settings", "build the always-reachable safety-net Settings door",
                 BuildSafetyNetSettingsDoor);
+            // WO-1884: Homes chip (castle <-> owned town). Built always; TickHomesChip shows
+            // it only after OwnedBaseProgression.Validate — a chip that only exists after a
+            // HUD rebuild would miss the first frame the owned base lands.
+            Guard.Try("Homes", "build Homes switcher chip", BuildHomesChip);
 
             Transform pool = transform;   // widgets are reparented into areas on ApplyPosture
 
@@ -1742,6 +1756,80 @@ namespace DeNelle.HUD.Kit
             FlowTrace.Step("Settings",
                 "safety-net Settings door tapped -> SettingsGate.RequestOpen(safety-gear)");
             SettingsGate.RequestOpen("safety-gear");
+        }
+
+        // =====================================================================
+        // WO-1884 — HOMES SWITCHER CHIP (gear-family persistent door)
+        // Own root canvas (same shape as the safety-net Settings door) so posture
+        // occupancy cannot bury the only public castle <-> owned-town route.
+        // =====================================================================
+        private void BuildHomesChip()
+        {
+            _homesChipCanvas = ElarionUiKit.BuildModalCanvas("HudHomesChip", HomesChipSortingOrder);
+            var corner = new GameObject("Corner", typeof(RectTransform));
+            corner.transform.SetParent(_homesChipCanvas.transform, false);
+            var cornerRt = (RectTransform)corner.transform;
+            // Top-right, clear of vitals (left) and the bottom-right safety-net Settings door.
+            cornerRt.anchorMin = new Vector2(0.870f, 0.910f);
+            cornerRt.anchorMax = new Vector2(0.995f, 0.980f);
+            cornerRt.offsetMin = Vector2.zero;
+            cornerRt.offsetMax = Vector2.zero;
+
+            _homesChipButton = ElarionUiKit.BuildObsidianButton(
+                corner.transform,
+                new LocalizedText("ownedTown.homes").Resolve(),
+                ElarionUiKit.ObsidianButtonStyle.Style1, ElarionUiKit.ObsidianButtonColor.Yellow,
+                Vector2.zero, Vector2.one, OnHomesChipTapped);
+            if (_homesChipButton != null)
+            {
+                _homesChipButton.gameObject.name = "HomesChip";
+                var homesLbl = _homesChipButton.GetComponentInChildren<TMP_Text>(true);
+                if (homesLbl != null) LocalizedLabel.Attach(homesLbl, "ownedTown.homes");
+            }
+
+            _homesChipCanvas.SetActive(false);
+            _homesChipWantVisible = false;
+            _homesChipPollTimer = HomesChipPollSeconds;
+            FlowTrace.Step("Homes",
+                "Homes chip built (WO-1884) - hidden until OwnedBaseProgression.Validate; " +
+                "sortingOrder=" + HomesChipSortingOrder);
+        }
+
+        private void OnHomesChipTapped()
+        {
+            if (SwallowedByCloseGrace("Homes chip")) return;
+            if (!PanelRouter.Open(PanelId.Homes))
+            {
+                FlowTrace.Warn("Homes",
+                    "Homes chip tapped but PanelId.Homes has no opener - HomesSwitcherPanel " +
+                    "is not registered in this scene.");
+                return;
+            }
+            FlowTrace.Step("Homes", "Homes chip tapped -> PanelRouter.Open(Homes)");
+        }
+
+        private void TickHomesChip()
+        {
+            if (_homesChipCanvas == null) return;
+            _homesChipPollTimer -= Time.unscaledDeltaTime;
+            if (_homesChipPollTimer > 0f) return;
+            _homesChipPollTimer = HomesChipPollSeconds;
+
+            bool want = ShouldShowHomesChip();
+            if (want == _homesChipWantVisible) return;
+            _homesChipWantVisible = want;
+            _homesChipCanvas.SetActive(want);
+            FlowTrace.Step("Homes", "Homes chip " + (want ? "SHOWN" : "HIDDEN") +
+                " (Validate + hub/owned-town gate, WO-1884)");
+        }
+
+        private static bool ShouldShowHomesChip()
+        {
+            if (!DeNelle.Core.HudModel.HudActionBarModel.HasOwnedTownHome())
+                return false;
+            string scene = SceneManager.GetActiveScene().name;
+            if (HubScenes.SuppressTownHud(scene) || HubScenes.IsRaid(scene)) return false;
+            return HubScenes.IsHub(scene) || HubScenes.IsOwnedTown(scene);
         }
 
         /// <summary>WO-1856 Part A yield: hide the door while a LIVE dialogue panel is actually
@@ -6243,6 +6331,8 @@ namespace DeNelle.HUD.Kit
             // dialogue). Cheap edge-gated check; must not depend on anything else in this
             // Update() running first.
             TickSafetyGearDialogueYield();
+            // WO-1884: Homes chip visibility (owned-base unlock + hub/owned-town scene).
+            TickHomesChip();
 
             // WO-997 §3b: ease the hero plate's mana fill toward its target + run the
             // spend flash (brightness pulse, colourblind-safe). Cheap; early-outs when idle.

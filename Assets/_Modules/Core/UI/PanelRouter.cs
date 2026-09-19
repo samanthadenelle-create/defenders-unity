@@ -201,6 +201,11 @@ namespace DeNelle.Core.UI
         /// VigilCeremonyPanel / PanelId.CeremonyOfVigil (D1). Never a raid blocker.
         /// Append-only: values are load-bearing.</summary>
         CeremonyOfVigil = 29,
+        /// <summary>WO-1884 - Homes switcher (HomesSwitcherPanel, DeNelle.HUD): pick
+        /// Elarion (castle hub) or the captured personal town. Visible once
+        /// OwnedBaseProgression.Validate is true; one HUD chip is the public door.
+        /// Append-only: values are load-bearing.</summary>
+        Homes = 30,
     }
 
     /// <summary>

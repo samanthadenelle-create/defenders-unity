@@ -189,7 +189,16 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-19 (CLI, two-hundred-and-eighty-third pass): main line next free = **1884**.
+> ## RECONCILED 2026-09-19 (CLI, two-hundred-and-eighty-fifth pass): main line next free = **1886**.
+> *(CLI minted **WO-1885** raid HUD: troop tray + Deploy All to the TOP; Breach + Rally bottom
+> middle. Owner frame of troops blocking the combat view. Bumped 1885 -> 1886 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-19 (CLI, two-hundred-and-eighty-fourth pass): main line next free = **1885**.
+> *(CLI minted **WO-1884** homes switcher: castle vs captured village. Owner: cannot get back
+> to the new village after unlock; need a mechanic to switch builds and choose.
+> Bumped 1884 -> 1885 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-19 (CLI, two-hundred-and-eighty-third pass): main line next free = **1884**.
 > *(CLI minted **WO-1882** chat is a first-class HUD door (not gear/Settings), minimize, pause-or-run toggle;
 > **WO-1883** collector pending stays until Collect — auto-spill to bank is retired so the player returns.
 > Bumped 1882 -> 1884 in this SAME edit.)*

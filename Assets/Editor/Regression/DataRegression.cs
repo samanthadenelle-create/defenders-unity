@@ -784,6 +784,9 @@ namespace DeNelle.Editor
             // (role-split ResolveTowerTypes), Landscape outer (no targetable Wall_Outer_*), Bastion
             // raidDress (not garrison synty-castle / not empty), Extreme max-tier visuals.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "iron-bastion-hardest suite", () => { if (!DeNelle.Editor.Regression.IronBastionHardestRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[iron-bastion-hardest] " + r); });
+            // WO-1868 redirect — raid fog/storm visibilityExempt + KayKit RockPaths (no grey pillar /
+            // M_21 palette pick) + no Dungeon_Wall_Stone rim backing.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "raid-atmosphere-fx suite", () => { if (!DeNelle.Editor.Regression.RaidAtmosphereFxRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[raid-atmosphere-fx] " + r); });
             // WO-1749 - the raid OBJECTIVE must be REACHABLE. PlaceSpire seated the spire on the ground and
             // RaidBaseDresser.RaiseKeep then dropped a 1.5m platform over it, so every troop pathed to a point
             // inside solid geometry: the device read routeObj=PathPartial 1650 times and PathComplete ZERO.
@@ -1662,6 +1665,8 @@ namespace DeNelle.Editor
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "captured-town-bare suite", () => { if (!DeNelle.Editor.Regression.CapturedTownStartsBareRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[captured-town-bare] " + r); });
             // WO-1876 — captured town reuses castle HUD/build; OwnedTownPanel is not the rebuild door.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "owned-town-hud suite", () => { if (!DeNelle.Editor.Regression.OwnedTownHudReuseRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[owned-town-hud] " + r); });
+            // WO-1884 — Homes switcher chip/panel: castle <-> owned town once Validate; one public door.
+            DeNelle.Core.Diagnostics.Guard.Try("Regression", "homes-switcher suite", () => { if (!DeNelle.Editor.Regression.HomesSwitcherRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[homes-switcher] " + r); });
             // WO-1870 — the Circle screen (a Remnant is the player, "Bob of RiverRun"; the group is a
             // Circle): VM-bound view, signed calls, no stat copy on ballots, key parity, the doors.
             DeNelle.Core.Diagnostics.Guard.Try("Regression", "circle-screen suite", () => { if (!DeNelle.Editor.Regression.CircleScreenRegression.Run(out var r)) failures.Add(r); else log.AppendLine("[circle-screen] " + r); });

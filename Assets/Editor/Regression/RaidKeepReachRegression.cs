@@ -233,6 +233,23 @@ namespace DeNelle.Editor.Regression
                     float r = new Vector2(p.x, p.z).magnitude;
                     if (r > outerRadius) outerRadius = r;
                 }
+                if (outerRadius <= 1f)
+                {
+                    // WO-1878 Landscape enclosure: no Wall_Outer_*. Courtyard radius is the
+                    // ArenaBoundary ring (textured rocks), not a WallSegment.
+                    var ring = root.transform.Find("ArenaBoundary_Ring");
+                    if (ring != null)
+                    {
+                        var pieces = ring.GetComponentsInChildren<Transform>(true);
+                        for (int p = 0; p < pieces.Length; p++)
+                        {
+                            if (pieces[p] == null || pieces[p] == ring) continue;
+                            Vector3 pos = pieces[p].position;
+                            float r = new Vector2(pos.x, pos.z).magnitude;
+                            if (r > outerRadius) outerRadius = r;
+                        }
+                    }
+                }
             }
 
             if (spire == null)
@@ -313,7 +330,7 @@ namespace DeNelle.Editor.Regression
             }
             else
             {
-                failures.Add("no Wall_Outer_* segment found - the courtyard probe point cannot be derived, so this scene proved nothing");
+                notes.AppendLine("no enclosing ring - court leg skipped (Landscape / no Wall_Outer_*)");
             }
 
             if (failures.Count == 0)

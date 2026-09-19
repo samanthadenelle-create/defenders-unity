@@ -864,6 +864,23 @@ namespace DeNelle.Editor.Regression
                         ownerDestroyed: true, ownerActive: false, cameraKnown: true,
                         visible: false, offscreenFor: Grace * 10f, grace: Grace, slotAvailable: false));
 
+                // 10. WO-1868 visibilityExempt: off-camera past grace must KEEP (raid fog/storm).
+                //     Distinct from accessibility — owner destroy still suspends (case 11).
+                Policy("visibilityExempt off camera past the grace (raid atmosphere)",
+                    VfxLoopReleasePolicy.LoopAction.Keep,
+                    VfxLoopReleasePolicy.Decide(suspended: false, exempt: false,
+                        ownerDestroyed: false, ownerActive: true, cameraKnown: true,
+                        visible: false, offscreenFor: Grace + 0.1f, grace: Grace, slotAvailable: true,
+                        visibilityExempt: true));
+
+                // 11. WO-1868 visibilityExempt does NOT protect a destroyed owner.
+                Policy("visibilityExempt + owner destroyed still suspends",
+                    VfxLoopReleasePolicy.LoopAction.Suspend,
+                    VfxLoopReleasePolicy.Decide(suspended: false, exempt: false,
+                        ownerDestroyed: true, ownerActive: false, cameraKnown: true,
+                        visible: true, offscreenFor: 0f, grace: Grace, slotAvailable: true,
+                        visibilityExempt: true));
+
                 notes.Add("wo1473 release-policy cases=" + policyChecked);
             }
 

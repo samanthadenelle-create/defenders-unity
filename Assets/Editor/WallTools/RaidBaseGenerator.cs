@@ -2052,7 +2052,10 @@ namespace DeNelle.Editor
                 // so one grep of a bake log reads every art decision this scene made. The tag is
                 // passed (not copied into ArenaBoundaryRing) because DeNelle.Editor cannot see
                 // DeNelle.EditorWallTools - see TraceMaterials' header.
-                RaidBaseDresser.Sys, "Fantasy_M/Dungeon_Wall_Stone.prefab");
+                // WO-1868: no Dungeon_Wall_Stone backing — that panel bound empty-albedo
+                // M_21_Grey_Light_LPUP and read as the continuous grey box wall behind the
+                // rock ring. Landscape rim = RockPaths only (textured KayKit rocks).
+                RaidBaseDresser.Sys, null);
 
             // Same line shape as the wall rings above, so one grep reads every ring in a bake.
             string gapText = report.WorstGap <= 0f

@@ -353,6 +353,11 @@ namespace DeNelle.Core.UI
         // Raid exit sits above its readout, clear of the central compass and bottom combat controls.
         public static readonly Rect RaidRetreatBand = Rect.MinMaxRect(0.780f, 0.850f, 0.995f, 0.970f);
 
+        // WO-1885 (owner 2026-09-19): troop select + Deploy All live at the TOP, left of
+        // Retreat/readout, so they are out of the combat view. Same Y as Retreat; x stops
+        // short of RaidReadoutBand (0.780).
+        public static readonly Rect RaidTroopTrayBand = Rect.MinMaxRect(0.020f, 0.850f, 0.760f, 0.980f);
+
         // ── WO-1670 — THE RIGHT COLUMN'S QUEUE BAND AND THE ECHOES CHIP ────────
         //
         // ⭐ OWNER RULING 2026-09-10 12:16: the Echoes chip encroaches 0.022 of the canvas into

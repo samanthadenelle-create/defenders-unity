@@ -462,6 +462,7 @@
   "ownedTown.moveEast": "동쪽으로 이동",
   "ownedTown.reenter": "저장하고 다시 입장",
   "ownedTown.castle": "성으로 돌아가기",
+  "ownedTown.homes": "거점",
   "ownedTown.noRepair": "현재 수리할 수 있는 손상된 구조물이 없습니다.",
   "ownedTown.selectTower": "서 있는 방어탑을 선택하세요.",
   "ownedTown.saved": "배치를 저장했습니다. 마을에 다시 입장해 복원된 배치를 확인하세요.",

@@ -301,6 +301,10 @@ namespace DeNelle.Village
             public float     SuspendedAt;    // realtime of the suspend, for the dump/audit lines
             public float     OffscreenSince; // realtime the host was first judged off-camera;
                                              // <0 means on-camera OR not judgeable (no camera)
+            // WO-1868 redirect: raid atmosphere loops (yard fog / sky storm) must KEEP emitting
+            // when a patch sits off the frustum. Distinct from AccessibilityLoops — owner destroy
+            // still suspends; only the off-camera branch is skipped (see visibilityExempt).
+            public bool      VisibilityExempt;
 
             // ── WO-1786: the ORACLE's state, and the reason it is a TICK COUNT, not a clock ──
             // The audit used to re-derive "stuck" from OffscreenSince against the SAME 6 s grace
@@ -1479,7 +1483,8 @@ namespace DeNelle.Village
         /// <summary>Register one live loop under its host. Called on EVERY path that takes a loop
         /// slot (VFXType prefab, procedural fallback, Hovl string key) — the Add IS the increment.</summary>
         private void RegisterLoop(Dictionary<GameObject, LoopRecord> registry, GameObject host,
-                                  VFXType type, string hovlKey, Transform owner)
+                                  VFXType type, string hovlKey, Transform owner,
+                                  bool visibilityExempt = false)
         {
             if (host == null || registry == null) return;
 
@@ -1516,9 +1521,10 @@ namespace DeNelle.Village
                 Warned     = false,
                 // WO-1473: a brand-new loop is HELD and has never been judged off-camera. -1
                 // means "no off-camera streak running", which is not the same as "0 seconds".
-                Suspended      = false,
-                SuspendedAt    = 0f,
-                OffscreenSince = -1f,
+                Suspended        = false,
+                SuspendedAt      = 0f,
+                OffscreenSince   = -1f,
+                VisibilityExempt = visibilityExempt,
             };
 
             // WO-1473 — THE PER-OWNER AMBIENT CAP, asserted at the moment the slot is taken.
@@ -1584,6 +1590,9 @@ namespace DeNelle.Village
                 // never suspended here. One list, one predicate, in VfxLoopBudget - an id written
                 // inline at a second check site is the drift this repo keeps paying for.
                 bool exempt = VfxLoopBudget.IsAccessibilityLoop(rec.Type);
+                // WO-1868: atmosphere visibility-exempt is SEPARATE — off-camera only, never
+                // owner-destroy (Decide's visibilityExempt branch).
+                bool visibilityExempt = rec.VisibilityExempt;
 
                 bool hadOwner       = !rec.Unparented;
                 bool ownerDestroyed = hadOwner && rec.Owner == null;
@@ -1609,15 +1618,16 @@ namespace DeNelle.Village
                 bool slotAvailable = held < cap;
 
                 var action = VfxLoopReleasePolicy.Decide(
-                    suspended:      rec.Suspended,
-                    exempt:         exempt,
-                    ownerDestroyed: ownerDestroyed,
-                    ownerActive:    ownerActive,
-                    cameraKnown:    cameraKnown,
-                    visible:        visible,
-                    offscreenFor:   offscreenFor,
-                    grace:          OFFSCREEN_RELEASE_GRACE,
-                    slotAvailable:  slotAvailable);
+                    suspended:         rec.Suspended,
+                    exempt:            exempt,
+                    ownerDestroyed:    ownerDestroyed,
+                    ownerActive:       ownerActive,
+                    cameraKnown:       cameraKnown,
+                    visible:           visible,
+                    offscreenFor:      offscreenFor,
+                    grace:             OFFSCREEN_RELEASE_GRACE,
+                    slotAvailable:     slotAvailable,
+                    visibilityExempt:  visibilityExempt);
 
                 switch (action)
                 {
@@ -1645,13 +1655,14 @@ namespace DeNelle.Village
                 // (It does NOT need to cover a null host: the loop head above already `continue`s
                 // on one, and ReclaimDestroyedLoops owns that record.)
                 bool shouldRelease = VfxLoopReleasePolicy.ShouldHaveReleased(
-                    exempt:         exempt,
-                    ownerDestroyed: ownerDestroyed,
-                    ownerActive:    ownerActive,
-                    cameraKnown:    cameraKnown,
-                    visible:        visible,
-                    offscreenFor:   offscreenFor,
-                    grace:          OFFSCREEN_RELEASE_GRACE);
+                    exempt:            exempt,
+                    ownerDestroyed:    ownerDestroyed,
+                    ownerActive:       ownerActive,
+                    cameraKnown:       cameraKnown,
+                    visible:           visible,
+                    offscreenFor:      offscreenFor,
+                    grace:             OFFSCREEN_RELEASE_GRACE,
+                    visibilityExempt:  visibilityExempt);
 
                 if (shouldRelease && !rec.Suspended)
                 {
@@ -2687,11 +2698,14 @@ namespace DeNelle.Village
         /// <param name="offscreenFor">Seconds the off-camera streak has run (0 when on camera).</param>
         /// <param name="grace">Seconds off camera before a release (VFXManager's OFFSCREEN_RELEASE_GRACE).</param>
         /// <param name="slotAvailable">Is there loop-budget headroom for a resume right now?</param>
+        /// <param name="visibilityExempt">WO-1868: skip ONLY the off-camera suspend (raid fog/storm).
+        /// Owner-destroy/disable still releases. Not the accessibility allowlist.</param>
         public static LoopAction Decide(bool suspended, bool exempt,
                                         bool ownerDestroyed, bool ownerActive,
                                         bool cameraKnown, bool visible,
                                         float offscreenFor, float grace,
-                                        bool slotAvailable)
+                                        bool slotAvailable,
+                                        bool visibilityExempt = false)
         {
             // 1. Accessibility: unsuspendable, and it jumps the resume queue (it is why
             //    AccessibilityReserve exists — a slot is held open for exactly this).
@@ -2715,6 +2729,8 @@ namespace DeNelle.Village
 
             // 5. Off camera: release only after the FULL grace. The grace is the hysteresis —
             //    a loop clipping the edge of the frustum must not flicker its slot every tick.
+            //    WO-1868 visibilityExempt: never suspend for frustum alone (yard fog / sky layer).
+            if (visibilityExempt) return LoopAction.Keep;
             if (!suspended && offscreenFor >= grace) return LoopAction.Suspend;
             return LoopAction.Keep;
         }
@@ -2760,7 +2776,8 @@ namespace DeNelle.Village
         public static bool ShouldHaveReleased(bool exempt,
                                              bool ownerDestroyed, bool ownerActive,
                                              bool cameraKnown, bool visible,
-                                             float offscreenFor, float grace)
+                                             float offscreenFor, float grace,
+                                             bool visibilityExempt = false)
         {
             // Accessibility loops are unrefusable and unsuspendable by ruling (WO-1229): keeping
             // one off-camera is the feature, never a defect, so it can never be stuck.
@@ -2771,6 +2788,9 @@ namespace DeNelle.Village
 
             // No camera to judge by (Decide branch 3) — an unjudgeable loop is never a defect.
             if (!cameraKnown) return false;
+
+            // WO-1868: visibility-exempt loops are never releasable for frustum alone.
+            if (visibilityExempt) return false;
 
             // Off camera for the whole grace (Decide branch 5).
             return !visible && offscreenFor >= grace;

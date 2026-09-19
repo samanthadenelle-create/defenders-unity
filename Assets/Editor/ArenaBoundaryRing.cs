@@ -85,66 +85,43 @@ namespace DeNelle.Editor
         /// <summary>
         /// The boundary palette - "a low wall of large rocks" (the siege venue's own words).
         /// <para/>
-        /// ⚠ WO-1637, owner ruling 2026-09-10 12:07: THIS MOVED TO A DARKER STONE FAMILY, and
-        /// it moved for BOTH venues (the raid arena boundary and the battle arena's siege
-        /// venue, which delegates to this very array). The owner ticked "both venues"; if the
-        /// siege venue then reads wrong, that is its own ticket - it is not a reason to fork
-        /// the palette here into two copies.
+        /// ⚠ WO-1868 REDIRECT (2026-09-19): the Fantasy_M dungeon-pillar trio is RETIRED as a
+        /// palette pick. WO-1758 named the owner's "giant untextured grey box" as
+        /// <c>dungeon-pillar-stone-square</c> under <c>ArenaBoundary_Ring</c> binding
+        /// empty-albedo <c>M_21_Grey_Light_LPUP</c>. Rebind-to-shadow helped luminance but the
+        /// mesh still read as a grey box wall. This array now uses the TRACKED KayKit forest
+        /// rocks already under <c>Assets/Resources/Arena/</c> (same vocabulary HubFoliageInjector
+        /// / ArenaPrefabBuilder use) — textured <c>forest_texture_URP</c>, rock-shaped, not
+        /// pillars. Absolute <c>Assets/...</c> paths; see <see cref="ResolvePrefabPath"/>.
         /// <para/>
-        /// WHAT WAS MEASURED, on the shipped device frame
-        /// `Builds/device-frames/2026-09-10_0614_arena_06_wide.png` (build 363529, Seeker,
-        /// 2670x1200), luminance = 0.2126R+0.7152G+0.0722B over the sRGB pixel values, i.e.
-        /// what a DESATURATED copy of that PNG shows:
-        /// <list type="bullet">
-        /// <item>boundary ring band ......... 0.670 (median 0.595)</item>
-        /// <item>sky immediately above it ... 0.677 (median 0.692)</item>
-        /// </list>
-        /// A delta of <b>0.007</b>. The ring had no top edge at all - not "hard to see", ABSENT.
-        /// The old palette was three prefabs that all bind ONE untextured swatch,
-        /// `M_14_Brown_lightest_LPUP` at 0.763, seen through 64-100% linear fog toward a colour
-        /// of 0.585 in the same hue family. Two authored decisions, each fine alone, that
-        /// cancelled the geometry between them.
+        /// Both venues still share this ONE array (WO-1637 owner tick). Footprints are MEASURED
+        /// at bake via <see cref="MeasureFootprints"/> — do not hardcode thin/wide here.
         /// <para/>
-        /// WHY THESE THREE. The pack was swept by PROPERTY, not by name (memory
-        /// `search-by-token-not-by-name`): every prefab whose materials all sit in
-        /// luminance 0.15-0.56, whose mesh is chunky enough not to open gaps, and whose pivot
-        /// is at its base. <b>polyperfect has NO dark NATURAL rock at boulder scale</b> - the
-        /// entire `Nature_M/Stones_M` family is the one pale swatch, and every darker stone in
-        /// the pack is a dungeon / ruin piece at roughly a third the size. So the palette is
-        /// ruined masonry, which also suits this camp's own fiction ("Scavengers strip an
-        /// abandoned settlement", scene-configs.json `raider_camp_small.description`).
-        /// Materials: `M_20_Grey_LPUP` 0.514 and `M_21_Grey_Light_LPUP` 0.636 - and TWO values
-        /// instead of one is itself part of the fix, because "one flat untextured swatch" was
-        /// half the original finding.
-        /// <para/>
-        /// ⚠ THE GEOMETRY WAS MEASURED BEFORE THE SWAP, because this array can silently break
-        /// WO-1632's continuity pin. <see cref="PlaceSquarePerimeter"/> derives its stride from
-        /// the THINNEST piece and band-fits the WIDEST, so a palette with a bad
-        /// thin/wide ratio drives the per-side count past `maxPerSide`, the clamp widens the
-        /// stride and `WorstGap` goes POSITIVE - open ground in a playable boundary. Measured
-        /// (metres, importer units applied), against a control that reproduces the 2026-09-10
-        /// bake log exactly (it said min 2.24 / max 3.38 / piece 2.42 / stride 1.67 / 82 a side):
-        /// <list type="bullet">
-        /// <item>Rubble_Stone ............ 1.56 x 1.61 XZ, 0.53 high, pivot -0.14</item>
-        /// <item>Pillar_Stone_Round ...... 0.78 x 0.78 XZ, 3.02 high, pivot +0.09</item>
-        /// <item>Pillar_Stone_Square ..... 0.80 x 0.80 XZ, 3.12 high, pivot  0.00</item>
-        /// </list>
-        /// Palette min 0.78 / max 1.61 -> band fit applies ~2.26, widest piece 3.64 m (the SAME
-        /// 1.82 m inward reach as before, so containment is untouched), piece 1.72 m, per-side
-        /// count clamps at 100 and the stride lands at 1.39 m - still SHORTER than the piece, so
-        /// `WorstGap` stays negative (-0.33 m overlap) and the ring stays continuous. Heights
-        /// land at 1.2 / 6.8 / 7.1 m against the old 1.4 / 4.0 / 7.3 m.
-        /// <para/>
-        /// ⛔ DO NOT ADD A THIN PIECE HERE. A modular wall panel (e.g. `Dungeon_Wall_Stone`,
+        /// ⛔ DO NOT re-add <c>Dungeon_Pillar_Stone_Square</c>, <c>Dungeon_Pillar_Stone_Round</c>,
+        /// or any Colors swatch named <c>M_21_Grey_Light_LPUP</c> as a palette pick. The
+        /// light-swatch rebind below remains as a safety net for future palette edits.
+        /// ⛔ DO NOT ADD A THIN PIECE HERE. A modular wall panel (e.g. <c>Dungeon_Wall_Stone</c>,
         /// 4.00 x 0.33) has a thin/wide ratio of 0.08; it would clamp the count and tear the
         /// ring open. Anything added must be measured first.
         /// </summary>
         public static readonly string[] RockPaths =
         {
-            "Fantasy_M/Rubble_Stone.prefab",
-            "Fantasy_M/Dungeon_Pillar_Stone_Round.prefab",
-            "Fantasy_M/Dungeon_Pillar_Stone_Square.prefab",
+            "Assets/Resources/Arena/Rock_1_A_Color1.fbx",
+            "Assets/Resources/Arena/Rock_1_J_Color1.fbx",
+            "Assets/Resources/Arena/Rock_2_C_Color1.fbx",
+            "Assets/Resources/Arena/Rock_3_E_Color1.fbx",
         };
+
+        /// <summary>
+        /// Resolve a palette entry to an AssetDatabase path. Absolute <c>Assets/...</c> entries
+        /// (WO-1868 KayKit rocks) pass through; relative entries stay under <see cref="PrefabRoot"/>.
+        /// </summary>
+        public static string ResolvePrefabPath(string relOrAbs)
+        {
+            if (string.IsNullOrEmpty(relOrAbs)) return relOrAbs;
+            if (relOrAbs.StartsWith("Assets/", System.StringComparison.Ordinal)) return relOrAbs;
+            return PrefabRoot + relOrAbs;
+        }
 
         /// <summary>Widest a fallback primitive is - the floor used when the pack is absent.</summary>
         private const float FallbackFootprint = 1.2f;
@@ -313,7 +290,7 @@ namespace DeNelle.Editor
                 float s = Mathf.Lerp(scaleMin, scaleMax, (float)rng.NextDouble());
                 go.transform.localScale *= s;
                 go.name = label + "_" + i;
-                if (traced.Add(rel)) TraceMaterials(flowSys, label + " (polar)", PrefabRoot + rel, go);
+                if (traced.Add(rel)) TraceMaterials(flowSys, label + " (polar)", ResolvePrefabPath(rel), go);
                 placedCounter++;
             }
 
@@ -444,7 +421,7 @@ namespace DeNelle.Editor
                     float sc = Mathf.Lerp(appliedScaleMin, appliedScaleMax, (float)rng.NextDouble());
                     go.transform.localScale *= sc;
                     go.name = label + "_" + sideNames[s] + "_" + i;
-                    if (traced.Add(rel)) TraceMaterials(flowSys, label + " (boundary ring)", PrefabRoot + rel, go);
+                    if (traced.Add(rel)) TraceMaterials(flowSys, label + " (boundary ring)", ResolvePrefabPath(rel), go);
                     placed++;
                 }
             }
@@ -528,7 +505,7 @@ namespace DeNelle.Editor
                     Vector3 centre = parent.TransformPoint(rot * new Vector3(-halfExtent + (i + 0.5f) * step, 0f, -halfExtent));
                     if (PieceBounds(go, out Bounds b))
                         go.transform.position += new Vector3(centre.x - b.center.x, centre.y - b.min.y, centre.z - b.center.z);
-                    if (placed == 0) TraceMaterials(flowSys, "continuous exterior backing", PrefabRoot + module, go);
+                    if (placed == 0) TraceMaterials(flowSys, "continuous exterior backing", ResolvePrefabPath(module), go);
                     placed++;
                 }
             }
@@ -579,7 +556,7 @@ namespace DeNelle.Editor
             {
                 foreach (var rel in prefabRelPaths)
                 {
-                    var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabRoot + rel);
+                    var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(ResolvePrefabPath(rel));
                     if (prefab == null) continue;
 
                     var tmp = Object.Instantiate(prefab);
@@ -622,7 +599,7 @@ namespace DeNelle.Editor
         public static GameObject InstantiatePiece(string relPath, Transform parent, string logTag,
                                                   string flowSys = null, bool rebindLightSwatches = true)
         {
-            string path = PrefabRoot + relPath;
+            string path = ResolvePrefabPath(relPath);
             var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(path);
             if (prefab != null)
             {

@@ -5149,6 +5149,10 @@ MonoBehaviour:
     m_Localized: Conecte sua carteira para ver seu Circulo.
     m_Metadata:
       m_Items: []
+  - m_Id: 44804625243656192
+    m_Localized: Lares
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

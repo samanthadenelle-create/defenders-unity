@@ -462,6 +462,7 @@
   "ownedTown.moveEast": "東へ移動",
   "ownedTown.reenter": "保存して入り直す",
   "ownedTown.castle": "城に戻る",
+  "ownedTown.homes": "拠点",
   "ownedTown.noRepair": "現在、修理できる損傷した建造物はありません。",
   "ownedTown.selectTower": "立っている防衛塔を選んでください。",
   "ownedTown.saved": "配置を保存しました。街に入り直すと復元された配置を確認できます。",

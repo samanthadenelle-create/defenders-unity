@@ -5185,6 +5185,10 @@ MonoBehaviour:
     m_Localized: Connectez votre portefeuille pour voir votre Cercle.
     m_Metadata:
       m_Items: []
+  - m_Id: 44804625243656192
+    m_Localized: Foyers
+    m_Metadata:
+      m_Items: []
   references:
     version: 2
     RefIds:

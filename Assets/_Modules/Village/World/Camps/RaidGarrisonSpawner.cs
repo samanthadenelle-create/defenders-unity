@@ -97,6 +97,16 @@ namespace DeNelle.Village.World.Camps
         // handles must be tracked and explicitly stopped: see OnDestroy.
         private readonly List<VFXHandle> _atmosphereFx = new List<VFXHandle>();
 
+        // Raid-only sky darken (camera clear + ambient). Restored in OnDestroy so the
+        // hub never inherits a storm tint (BattleArena.ApplySkyOverride pattern).
+        private bool _raidSkyOverridden;
+        private Camera _raidSkyCam;
+        private CameraClearFlags _savedClearFlags;
+        private Color _savedCamBg;
+        private Color _savedAmbientLight;
+        private float _savedAmbientIntensity;
+        private UnityEngine.Rendering.AmbientMode _savedAmbientMode;
+
         // -- SPIRE ALARM (WO-1830) ---------------------------------------------
         // The brains this spawner built, kept alongside _garrison so the alarm fan-out never needs
         // a FindObjectsByType scan (the brain is already in hand at SpawnBoss/SpawnGuard).
@@ -145,6 +155,7 @@ namespace DeNelle.Village.World.Camps
             for (int i = 0; i < _atmosphereFx.Count; i++)
                 _atmosphereFx[i]?.Stop(true);
             _atmosphereFx.Clear();
+            RestoreRaidSky();
         }
 
         // =====================================================================
@@ -668,102 +679,176 @@ namespace DeNelle.Village.World.Camps
         }
 
         // =====================================================================
-        // ATMOSPHERE (WO-1868) — owner: "can we have the towers in raids shoot more than
-        // yellow pellets? something with vfx? and add a fog to the ground?" / "maybe
-        // storming clouds overhead". Presentation only — no damage/range/fire-rate/
-        // targeting/economy change, raid-arena-scoped only (never the peaceful hub).
+        // ATMOSPHERE (WO-1868 REDIRECT 2026-09-18) — bounced by
+        // Logs/device/raid-fog-203029.png: two grey puffs under a CLEAR BLUE SKY,
+        // no ground fog (PP_GroundFog loops pool-SUSPENDED after ~10s; patches at
+        // 0.55 radius were too thin in daylight).
         //
-        // REUSE, NOT A NEW SYSTEM (CLAUDE.md anti-duplication): this project already has
-        // TWO atmosphere layers and both are reused verbatim, not reinvented —
-        //   1. DISTANCE HAZE + per-camp fog colour/skybox mood is RaidBaseDresser's bake-
-        //      time RenderSettings.fog (ConfigureAtmosphere), tuned per camp kit and ruled
-        //      by the owner (WO-1637: "the fog COLOUR is deliberately unchanged: it is this
-        //      camp's identity"). NOT touched here.
-        //   2. LOW-LYING GROUND MIST is the SAME pooled Hovl catalog key
-        //      ("PP_GroundFog") + the SAME VFXManager.PlayKey call shape already proven
-        //      live on the dungeon world portals (DungeonWorldPortalSpawner.AttachGateVfx)
-        //      -- a soft, wide, low ground mist, not a full-screen haze.
-        //   3. STORM CLOUDS reuse "PP_LightnigStormCloud", an already-imported, already
-        //      normalized (VFXManager.Hovl.cs NormalizeVendorContainerRenderers) Hovl
-        //      ParticlePack prefab that has NO prior caller anywhere in the tree -- an
-        //      unused, ready-made asset, not a new skybox/cloud shader.
-        // Both are ACTUAL WORLD GEOMETRY (particle systems), not a skybox/RenderSettings
-        // write, so they render correctly regardless of this scene's camera clear-flags
-        // and can never leak into the hub's RenderSettings the way a skybox/fog write on
-        // an additively-loaded scene could.
+        // Binding redirect:
+        //   1. Darken the raid sky itself — camera SolidColor tint + ambient drop
+        //      (restored OnDestroy; never a hub leak). Cloud LAYER spanning the sky,
+        //      not two puffs at 24 m. WeatherManager stays DORMANT (WO-992).
+        //   2. Fog = low dense blue-grey layer across the WHOLE yard; visibilityExempt
+        //      so VFXManager's off-camera Suspend cannot kill it (bounce named the
+        //      10 s suspend as the kill).
+        //   3. Occasional lightning from PP_LightnigStormCloud (sky layer + flash).
         //
-        // COLORBLIND-SAFE, FIRST PASS (owner delegates the exact look — never asked to
-        // pick a hue): both tints are pale, near-neutral, low-saturation greys so the
-        // read is LUMINANCE + slow drift/motion, exactly the convention the portal mist
-        // already uses (DungeonWorldPortalSpawner.GateTint). Redirectable on request.
-        //
-        // BUDGET: PP_GroundFog's catalog row is PoolSize 6 and VFXManager's global loop
-        // ceiling is shared with every other looping effect in the raid (auras, casts),
-        // so this stays deliberately small -- 4 ground patches + 2 overhead clouds, well
-        // under the pool and the ceiling, so a real fight's own loops are never starved.
+        // REUSE: same Hovl keys (PP_GroundFog / PP_LightnigStormCloud) + PlayKey.
+        // Bake-time DressAtmosphere camp fog colour is left alone (WO-1637 identity).
         // =====================================================================
 
-        /// <summary>Low, near-neutral ground-mist tint — luminance-led, colorblind-safe.</summary>
-        private static readonly Color GroundFogTint = new Color(0.74f, 0.77f, 0.82f, 0.32f);
+        /// <summary>Dense blue-grey ground fog — readable as weather in daylight.</summary>
+        private static readonly Color GroundFogTint = new Color(0.55f, 0.60f, 0.68f, 0.55f);
         private const string GroundFogKey = "PP_GroundFog";
-        private const int GroundFogPatchCount = 4;
+        // Filled yard: centre + inner ring + outer ring (1+4+4). Stays under the village
+        // loop ceiling with the sky layer so combat auras still have headroom.
+        private const int GroundFogCentre = 1;
+        private const int GroundFogInnerCount = 4;
+        private const int GroundFogOuterCount = 4;
 
-        /// <summary>Slate-grey storm-cloud tint — dark enough to read as weather, still
-        /// near-neutral (no hue the owner would have to distinguish).</summary>
-        private static readonly Color StormCloudTint = new Color(0.55f, 0.57f, 0.63f, 0.9f);
-        private const string StormCloudKey = "PP_LightnigStormCloud";   // catalog key, vendor's own spelling
-        private const int StormCloudCount = 2;
-        private const float StormCloudHeight = 24f;
+        /// <summary>Dark slate storm sky layer — luminance-led, colorblind-safe.</summary>
+        private static readonly Color StormCloudTint = new Color(0.32f, 0.34f, 0.40f, 0.95f);
+        private const string StormCloudKey = "PP_LightnigStormCloud";   // catalog key, vendor spelling
+        private const int StormCloudCount = 6;
+        private const float StormCloudHeight = 48f;
+
+        /// <summary>Raid camera clear / ambient storm tint (restored on teardown).</summary>
+        private static readonly Color RaidStormSky = new Color(0.22f, 0.24f, 0.30f, 1f);
+        private static readonly Color RaidStormAmbient = new Color(0.28f, 0.30f, 0.36f, 1f);
 
         private void SpawnAtmosphereFx(float baseRadius)
         {
             var atmosphereRoot = new GameObject("[RaidAtmosphereFx]").transform;
             atmosphereRoot.SetParent(transform, false);   // torn down with this raid scene
 
-            // -- Ground fog: a ring of low mist patches inside the wall band, NavMesh-
-            // snapped so a sloped/uneven camp floor never floats or sinks a patch (same
-            // snap SpawnGuard uses for guard footing).
-            float fogRing   = Mathf.Max(6f, baseRadius * 0.55f);
-            float fogScale  = Mathf.Clamp(baseRadius / 12f, 3f, 6f);
-            int fogSpawned  = 0;
-            for (int i = 0; i < GroundFogPatchCount; i++)
+            ApplyRaidSky();
+
+            // -- Ground fog: LOW DENSE layer across the WHOLE yard (not 4 thin patches
+            // at 0.55 radius). visibilityExempt so off-camera Suspend cannot blank it.
+            float fogScale = Mathf.Clamp(baseRadius / 5f, 10f, 18f);
+            int fogSpawned = 0;
+            int fogWanted = GroundFogCentre + GroundFogInnerCount + GroundFogOuterCount;
+
+            // Centre pad
             {
-                float a = i * Mathf.PI * 2f / GroundFogPatchCount;
-                Vector3 want = transform.position + new Vector3(Mathf.Cos(a) * fogRing, 0f, Mathf.Sin(a) * fogRing);
-                Vector3 pos = SnapToNav(want) + Vector3.up * 0.05f;   // clear the floor, no z-fight
-                var handle = VFXManager.PlayKey(GroundFogKey, pos, Quaternion.identity, atmosphereRoot, GroundFogTint, fogScale);
+                Vector3 pos = SnapToNav(transform.position) + Vector3.up * 0.08f;
+                var handle = VFXManager.PlayKey(GroundFogKey, pos, Quaternion.identity, atmosphereRoot,
+                                                GroundFogTint, fogScale, 0f, null, visibilityExempt: true);
                 if (handle != null) { _atmosphereFx.Add(handle); fogSpawned++; }
             }
 
-            // -- Storm clouds: a small number of overhead loops so the sky reads stormy
-            // without being a full-scene weather system (WeatherManager is DORMANT BY
-            // OWNER DECISION for the Realm Map zones, WO-992 — deliberately not used here).
-            float cloudRing = Mathf.Max(8f, baseRadius * 0.4f);
-            float cloudScale = Mathf.Clamp(baseRadius / 6f, 8f, 16f);
+            fogSpawned += SpawnFogRing(atmosphereRoot, baseRadius * 0.35f, GroundFogInnerCount, fogScale * 0.9f);
+            fogSpawned += SpawnFogRing(atmosphereRoot, baseRadius * 0.75f, GroundFogOuterCount, fogScale);
+
+            // -- Storm sky LAYER: grid of large dark clouds spanning the sky (not two
+            // puffs). Prefab carries occasional lightning flashes. WeatherManager unused.
+            float cloudSpan = Mathf.Max(18f, baseRadius * 1.1f);
+            float cloudScale = Mathf.Clamp(baseRadius / 3.5f, 18f, 32f);
             int cloudSpawned = 0;
             for (int i = 0; i < StormCloudCount; i++)
             {
-                float a = (i + 0.5f) * Mathf.PI * 2f / StormCloudCount;
+                float a = (i + 0.25f) * Mathf.PI * 2f / StormCloudCount;
+                float ring = cloudSpan * (0.55f + 0.35f * (i % 2));
+                float y = StormCloudHeight + (i % 3) * 6f;
                 Vector3 pos = transform.position +
-                    new Vector3(Mathf.Cos(a) * cloudRing, StormCloudHeight, Mathf.Sin(a) * cloudRing);
-                var handle = VFXManager.PlayKey(StormCloudKey, pos, Quaternion.identity, atmosphereRoot, StormCloudTint, cloudScale);
+                    new Vector3(Mathf.Cos(a) * ring, y, Mathf.Sin(a) * ring);
+                var handle = VFXManager.PlayKey(StormCloudKey, pos, Quaternion.identity, atmosphereRoot,
+                                                StormCloudTint, cloudScale, 0f, null, visibilityExempt: true);
                 if (handle != null) { _atmosphereFx.Add(handle); cloudSpawned++; }
             }
 
-            // R §12: a zero count on either layer means PlayKey no-op'd (catalog not ready /
-            // pack not imported / loop cap already hit) -- self-report so a silently-missing
-            // fog/cloud layer is provable from a log instead of looking like "it's just not
-            // there yet".
             FlowTrace.Step("Garrison",
-                $"'{configId}' atmosphere fx: ground fog {fogSpawned}/{GroundFogPatchCount} " +
-                $"(key='{GroundFogKey}', ring={fogRing:F1}m, scale={fogScale:F1}), storm clouds " +
-                $"{cloudSpawned}/{StormCloudCount} (key='{StormCloudKey}', height={StormCloudHeight:F0}m, " +
-                $"scale={cloudScale:F1}) -- distance haze/skybox mood stays owned by RaidBaseDresser.");
+                $"'{configId}' atmosphere fx REDIRECT: ground fog {fogSpawned}/{fogWanted} " +
+                $"(key='{GroundFogKey}', yard-fill, scale~{fogScale:F1}, visibilityExempt), storm sky " +
+                $"{cloudSpawned}/{StormCloudCount} (key='{StormCloudKey}', height~{StormCloudHeight:F0}m, " +
+                $"scale={cloudScale:F1}, visibilityExempt), raidSky={_raidSkyOverridden} — " +
+                "WeatherManager dormant; hub RenderSettings untouched on restore.");
             if (fogSpawned == 0 && cloudSpawned == 0)
                 FlowTrace.Warn("Garrison",
                     $"'{configId}' atmosphere fx: BOTH layers spawned 0 -- VFXManager/HovlVfxCatalog " +
                     "not ready, key unauthored, or the loop cap was already hit. Raid plays with no " +
                     "new ground fog / storm clouds this session.");
+        }
+
+        private int SpawnFogRing(Transform atmosphereRoot, float ring, int count, float scale)
+        {
+            if (count <= 0) return 0;
+            int spawned = 0;
+            float r = Mathf.Max(4f, ring);
+            for (int i = 0; i < count; i++)
+            {
+                float a = i * Mathf.PI * 2f / count;
+                Vector3 want = transform.position + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+                Vector3 pos = SnapToNav(want) + Vector3.up * 0.08f;
+                var handle = VFXManager.PlayKey(GroundFogKey, pos, Quaternion.identity, atmosphereRoot,
+                                                GroundFogTint, scale, 0f, null, visibilityExempt: true);
+                if (handle != null) { _atmosphereFx.Add(handle); spawned++; }
+            }
+            return spawned;
+        }
+
+        /// <summary>
+        /// Raid-only camera SolidColor + ambient drop. Restored in <see cref="RestoreRaidSky"/> —
+        /// never writes a skybox material, never leaves ambient dirty for the hub.
+        /// </summary>
+        private void ApplyRaidSky()
+        {
+            if (_raidSkyOverridden) return;
+            Guard.Try("Garrison", "apply raid storm sky", () =>
+            {
+                // Save FIRST, then mutate, then latch — so RestoreRaidSky can always undo
+                // even if a later write throws inside this Guard.
+                var cam = Camera.main;
+                if (cam != null)
+                {
+                    _raidSkyCam = cam;
+                    _savedClearFlags = cam.clearFlags;
+                    _savedCamBg = cam.backgroundColor;
+                }
+                _savedAmbientLight = RenderSettings.ambientLight;
+                _savedAmbientIntensity = RenderSettings.ambientIntensity;
+                _savedAmbientMode = RenderSettings.ambientMode;
+                _raidSkyOverridden = true;
+
+                if (_raidSkyCam != null)
+                {
+                    _raidSkyCam.clearFlags = CameraClearFlags.SolidColor;
+                    _raidSkyCam.backgroundColor = RaidStormSky;
+                }
+                else
+                {
+                    FlowTrace.Warn("Garrison",
+                        $"'{configId}' ApplyRaidSky: Camera.main null — ambient still dropped; " +
+                        "cloud layer must carry the storm read alone.");
+                }
+
+                RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
+                RenderSettings.ambientLight = RaidStormAmbient;
+                RenderSettings.ambientIntensity = 0.85f;
+                FlowTrace.Step("Garrison",
+                    $"'{configId}' raid sky darkened: camClear=SolidColor bg={RaidStormSky} " +
+                    $"ambientFlat={RaidStormAmbient} (saved for restore; hub untouched).");
+            });
+        }
+
+        private void RestoreRaidSky()
+        {
+            if (!_raidSkyOverridden) return;
+            Guard.Try("Garrison", "restore raid storm sky", () =>
+            {
+                if (_raidSkyCam != null)
+                {
+                    _raidSkyCam.clearFlags = _savedClearFlags;
+                    _raidSkyCam.backgroundColor = _savedCamBg;
+                }
+                RenderSettings.ambientMode = _savedAmbientMode;
+                RenderSettings.ambientLight = _savedAmbientLight;
+                RenderSettings.ambientIntensity = _savedAmbientIntensity;
+                FlowTrace.Step("Garrison",
+                    $"'{configId}' raid sky restored (camera clear + ambient back; hub safe).");
+            });
+            _raidSkyOverridden = false;
+            _raidSkyCam = null;
         }
 
         // =====================================================================

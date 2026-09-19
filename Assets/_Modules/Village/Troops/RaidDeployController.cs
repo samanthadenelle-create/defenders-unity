@@ -2592,7 +2592,7 @@ namespace DeNelle.Village
         /// <summary>Right edge of the troop tray, as a fraction of the bar. ⚠ WO-1639 pulled this
         /// in from 0.55 to free width for the "Deploy All" face - do not widen it without moving
         /// that face, and never re-type it beside a widget.</summary>
-        private const float TrayRightX = 0.390f;
+        private const float TrayRightX = 0.68f;
         // ── WO-1464: THE LEFT EDGE IS THE STICK'S RIGHT EDGE, AND IT IS NOT A LITERAL ────
         //
         // ⛔ THE DEFECT THIS CLOSES, MEASURED ON THE OWNER'S DEVICE (build 358872,
@@ -2625,8 +2625,9 @@ namespace DeNelle.Village
         {
             get
             {
-                return HudLayoutBands.StackAboveThumbBand(
-                    DeployBandMinX, DeployBandMaxX, DeployBarHeight, 0f);
+                // WO-1885: Breach + Rally only, bottom-middle, still ABOVE the ability row
+                // (WO-1436). Troops live on RaidTroopTrayBand at the top.
+                return HudLayoutBands.StackAboveThumbBand(0.32f, 0.68f, DeployBarHeight, 0f);
             }
         }
 
@@ -2637,7 +2638,7 @@ namespace DeNelle.Village
             get
             {
                 return HudLayoutBands.StackAboveThumbBand(
-                    DeployBandMinX, DeployBandMaxX, DeployStatusHeight,
+                    0.32f, 0.68f, DeployStatusHeight,
                     DeployBarHeight + HudLayoutBands.ThumbBandClearanceGap);
             }
         }
@@ -2661,29 +2662,32 @@ namespace DeNelle.Village
             // Command bar — a framed dark-glass strip, seated ABOVE the reserved thumb band so
             // the hero's ability row keeps the thumb position (owner ruling 2026-09-06; see the
             // DeployBarBand block above). The band comes from DeNelle.Core.UI, not from here.
+            var trayBand = HudLayoutBands.RaidTroopTrayBand;
+            var tray = ElarionUiKit.Panel(_ui.transform,
+                new Vector2(trayBand.xMin, trayBand.yMin), new Vector2(trayBand.xMax, trayBand.yMax),
+                deep: false, innerRim: false);
+            var trayImg = tray.GetComponent<Image>();
+            if (trayImg != null) trayImg.color = new Color(0.04f, 0.035f, 0.03f, 0.38f);
+            BuildTrayTiles(tray.transform);
+            float faceY0 = FaceY0, faceY1 = FaceY1;
+            _deployAllButton = ElarionUiKit.Button(tray.transform,
+                new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.deploy_all_button").Resolve(),
+                ElarionUiKit.ButtonKind.Gold,
+                new Vector2(0.70f, faceY0), new Vector2(0.98f, faceY1), DeployAll);
+
             var barBand = DeployBarBand;
-            // ⛔ WO-1647: `innerRim: false`. ElarionUiKit.Panel's innerRim DEFAULTS TO TRUE
-            // (ElarionUiKit.cs:145-146) and AddInnerRim (:2670-2683) is NOT a rim - it lays a
-            // FULL-RECT quad over the host's whole face at AccentSoft (Gold @ 0.30, UiStyle.cs:116)
-            // halved, i.e. gold at 0.15 across the entire plate. The kit documents this about
-            // itself at :2657-2668. MEASURED at HEAD: Builds/wave5-capture4 (07:43) reads this
-            // bar's plate the same dark OLIVE as the readout's at all three aspects, against a
-            // fill that is near-black. The seam is the kit's own parameter and the tree already
-            // uses it (HeroInventoryController.cs:632); the kit itself is NOT touched, because
-            // lowering AccentSoft would repaint every panel in the game to fix two.
             var bar = ElarionUiKit.Panel(_ui.transform,
                 new Vector2(barBand.xMin, barBand.yMin), new Vector2(barBand.xMax, barBand.yMax),
                 deep: false, innerRim: false);
             var barImg = bar.GetComponent<Image>();
             if (barImg != null) barImg.color = new Color(0.04f, 0.035f, 0.03f, 0.38f);
             DeNelle.Core.Diagnostics.FlowTrace.Step("Raid",
-                "deploy HUD seated above the reserved thumb band: bar y " +
+                "WO-1885 troop tray TOP y " +
+                trayBand.yMin.ToString("F3") + ".." + trayBand.yMax.ToString("F3") +
+                "; Breach/Rally bottom-middle y " +
                 barBand.yMin.ToString("F3") + ".." + barBand.yMax.ToString("F3") +
-                ", floor " + HudLayoutBands.BottomOverlayFloorY.ToString("F3") +
-                " (ability row tops out at " + HudLayoutBands.ThumbActionRowMaxY.ToString("F3") +
-                "), and clear of the movement stick: bar x starts at " +
-                barBand.xMin.ToString("F3") + ", stick right edge " +
-                HudLayoutBands.MoveClusterMount.xMax.ToString("F3") + " (WO-1464).");
+                " (still above ability row " +
+                HudLayoutBands.ThumbActionRowMaxY.ToString("F3") + ").");
 
             // Status line just above the bar.
             var statusBand = DeployStatusBand;
@@ -2708,85 +2712,14 @@ namespace DeNelle.Village
             // Floor at FontHardFloor: NeedPx(20) = 26.8, which always seats.
             ElarionUiKit.FitSingleLine(_status, ElarionUiKit.FontHardFloor, ElarionUi.FontLabel);
 
-            BuildTrayTiles(bar.transform);
-
-            // ⛔ WO-1639 DEFECT B — THE FACE WAS TOO NARROW FOR ITS OWN WORD, AND THE WORD IS PINNED.
-            // Every one of the four arena frames (Builds/device-frames/2026-09-10_060*_arena_*.png)
-            // shows this face reading "DEPLOY ..." - the label autoshrunk to ElarionUiKit.FontFloor
-            // (30) and then ELLIPSISED. The arithmetic, at the owner's 2670x1200:
-            //   canvas reference = 2147.9 x 965.4 px (HudLayoutBands.CanvasReferenceSize, :379,
-            //   Unity's own match-0.5 formula on the 1080x1920 reference), so the bar's
-            //   x 0.280-0.980 span is 1503.5 reference px wide.
-            //   BuildObsidianButton insets its label to 0.04-0.96 of the face
-            //   (ElarionUiKitObsidian.cs:681-683), i.e. 92% usable, then FitSingleLine (:686)
-            //   autosizes [30..50] and cuts with Ellipsis (:3054-3070).
-            //   OLD: Deploy All 0.130 of the bar = 195.5 px, 179.9 usable, for TEN characters at
-            //   FontBody 50 bold. Rally (5) and Retreat (7) fit the same width; "Deploy All"
-            //   never could - and RefreshRallyButton (see below) swaps Rally to "Rally ON" (8),
-            //   so that face was one character from the same failure.
-            //
-            // ⛔ SHORTENING THE COPY IS NOT AVAILABLE AND WAS NOT DONE. The exact literal
-            // "Deploy All" is pinned by Editor/Regression/RaidDeployUiRegression.cs:411-415, and
-            // renaming a player-facing face is the owner's call, not a lane's (CLAUDE.md sec.2).
-            // So the FACES WIDEN, and the room comes from the tray, which was over-wide: its
-            // tiles are square portraits in a 0.52-of-bar strip. WHAT MOVED, in bar fractions:
-            //   tray        0.030-0.550  ->  0.030-0.390   (BuildTrayTiles `right`)
-            //   Deploy All  0.565-0.695  ->  0.410-0.650   (0.130 -> 0.240)
-            //   Rally       0.700-0.830  ->  0.665-0.825   (0.130 -> 0.160)
-            //   Retreat     0.845-0.985  ->  0.840-0.985   (0.140 -> 0.145)
-            // The bar's own edges do not move, so DeployBarBand, DeployStatusBand and every
-            // y-band case in RaidHudThumbBandRegression are untouched; only x within the bar
-            // changes. Predicted seated sizes at 92% usable width and ~0.68 em average advance
-            // for this bold face: "Deploy All" ~48pt, "Rally ON" ~40pt, "Retreat" ~42pt - all
-            // comfortably above the 30 px FontFloor, so no face reaches the ellipsis at all.
-            // NO FONT IS LOWERED ANYWHERE; the fitters keep the kit's own floors.
-            // Touch floor: the tray keeps 541 reference px for its tiles, so four troop types
-            // seat 135 px each - still over ElarionUiKit.MinTouchPx (112); a fifth relies on the
-            // kit's own ClampMinTouch, exactly as it did at the old width.
-            // ⚠ WO-1646: the y fractions are DERIVED (FaceY0 / FaceY1), never typed. The x
-            // fractions are WO-1639's and are deliberately UNCHANGED - that ticket sized them so
-            // "Deploy All" stops ellipsising, and this one only makes the faces tall enough to
-            // touch. Widths must not move here.
-            // ── WO-1719: A THIRD FACE, AND THE ROOM IS RE-SPLIT ARITHMETICALLY ──────────
-            // The owner's ruling needs a Breach toggle on this bar. Nowhere else on the raid
-            // HUD can hold it: the right column is RaidReadoutBand (y 0.475-0.835) over
-            // RaidRetreatBand (0.850-0.970), and the only gap between the readout and this
-            // bar's status line (top 0.360) is 0.115 of screen = 111 reference px at
-            // CanvasReferenceSize's 965.4 - UNDER ElarionUiKit.MinTouchPx (112). A face that
-            // cannot be touched is not a button, so the third face goes on the bar.
-            //
-            // ⚠ WHAT THE PREVIOUS WIDTHS ACTUALLY WERE, read from the diff and not assumed.
-            // WO-1639 SIZED these faces against the ellipsis (Deploy All 0.240, Rally 0.160,
-            // Retreat 0.145). The in-tree 0.715 / 0.955 came from the LATER change that moved
-            // Retreat off the bar to RaidRetreatBand: the two survivors simply spread into the
-            // vacated 0.145 + gaps. So 0.305 and 0.220 are SPARE ROOM, not proven minimums,
-            // and reclaiming part of it is not a regression of WO-1639's fix.
-            //
-            // THE SPLIT, by the file's own formula (92% usable width, ~0.68 em average advance
-            // for this bold face; bar span x 0.280-0.980 = 1503.5 reference px):
-            //   Deploy All  0.410-0.630  0.220 -> 330.8 px, 10 chars -> ~44.7 pt
-            //   Breach      0.645-0.800  0.155 -> 233.0 px,  9 chars ("Breach ON") -> ~35.0 pt
-            //   Rally       0.815-0.955  0.140 -> 210.5 px,  8 chars ("Rally ON")  -> ~35.5 pt
-            // Every face clears ElarionUiKit.FontFloor (30) with margin, so none reaches the
-            // ellipsis; the narrowest is 210 px wide, comfortably over MinTouchPx (112). The
-            // BAR'S OWN EDGES AND THE y FRACTIONS DO NOT MOVE, so DeployBarBand,
-            // DeployStatusBand and every y-band case in RaidHudThumbBandRegression are
-            // untouched - only x within the bar changes, exactly as in WO-1639.
-            // The predictions above are ARITHMETIC; WO1639BarProbe's LogFaceFit("breach", ...)
-            // is the measured half, on the device, in the log.
-            float faceY0 = FaceY0, faceY1 = FaceY1;
-            _deployAllButton = ElarionUiKit.Button(bar.transform, new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.deploy_all_button").Resolve(), ElarionUiKit.ButtonKind.Gold,
-                new Vector2(0.410f, faceY0), new Vector2(0.630f, faceY1), DeployAll);
-
-            // Breach toggle. Its band carries "Breach ON" (RefreshBreachButton), not "Breach",
-            // so it is sized for the LONGER of the two - the same rule as Rally below.
-            _breachButton = ElarionUiKit.Button(bar.transform, new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.breach_button").Resolve(), ElarionUiKit.ButtonKind.Quiet,
-                new Vector2(0.645f, faceY0), new Vector2(0.800f, faceY1), ToggleBreach);
-
-            // Rally stays on the command bar. Its band carries "Rally ON"
-            // (RefreshRallyButton), not "Rally", so it is sized for the LONGER of the two.
-            _rallyButton = ElarionUiKit.Button(bar.transform, new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.rally_button").Resolve(), ElarionUiKit.ButtonKind.Quiet,
-                new Vector2(0.815f, faceY0), new Vector2(0.955f, faceY1), ToggleRally);
+            _breachButton = ElarionUiKit.Button(bar.transform,
+                new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.breach_button").Resolve(),
+                ElarionUiKit.ButtonKind.Quiet,
+                new Vector2(0.04f, faceY0), new Vector2(0.48f, faceY1), ToggleBreach);
+            _rallyButton = ElarionUiKit.Button(bar.transform,
+                new DeNelle.Core.UI.LocalizedText("village.troops.raid_deploy.rally_button").Resolve(),
+                ElarionUiKit.ButtonKind.Quiet,
+                new Vector2(0.52f, faceY0), new Vector2(0.96f, faceY1), ToggleRally);
             // Owner layout: persistent exit above the right-side raid readout.
             var retreatBand = HudLayoutBands.RaidRetreatBand;
             _retreatButton = ElarionUiKit.Button(_ui.transform, new DeNelle.Core.UI.LocalizedText("common.retreat").Resolve(), ElarionUiKit.ButtonKind.Danger,

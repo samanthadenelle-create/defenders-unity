@@ -376,17 +376,21 @@ namespace DeNelle.Village
         /// else auto-detected from the particle systems. Ignored for loops.</param>
         /// <param name="follow">Optional target the effect keeps its position on each frame
         /// (a small mover, for projectiles/trails on a moving transform).</param>
+        /// <param name="visibilityExempt">WO-1868: when true on a LOOP, the off-camera suspend
+        /// policy never stops this host (raid yard fog / sky storm). Owner destroy still
+        /// releases. Default false — every other caller unchanged.</param>
         public static VFXHandle PlayKey(string key, Vector3 position,
                                         Quaternion rotation = default, Transform parent = null,
                                         Color? color = null, float scale = 0f, float lifetime = 0f,
-                                        Transform follow = null)
-            => Instance?.PlayKeyInternal(key, position, rotation, parent, color, scale, lifetime, follow);
+                                        Transform follow = null, bool visibilityExempt = false)
+            => Instance?.PlayKeyInternal(key, position, rotation, parent, color, scale, lifetime, follow,
+                                         visibilityExempt);
 
         // ── Core spawn ──────────────────────────────────────────────────────────
 
         private VFXHandle PlayKeyInternal(string key, Vector3 position, Quaternion rotation,
                                           Transform parent, Color? color, float scale, float lifetime,
-                                          Transform follow)
+                                          Transform follow, bool visibilityExempt = false)
         {
             if (string.IsNullOrEmpty(key)) return null;
 
@@ -519,7 +523,7 @@ namespace DeNelle.Village
             {
                 // WO-1057: registering IS the increment. `key` is the OWNER-AUTHORED catalog key
                 // and it is stored + printed VERBATIM — never resolved, prettified or substituted.
-                RegisterLoop(_hovlLoopObjects, go, VFXType.None, key, parent);
+                RegisterLoop(_hovlLoopObjects, go, VFXType.None, key, parent, visibilityExempt);
                 return new VFXHandle(go, key);
             }
 

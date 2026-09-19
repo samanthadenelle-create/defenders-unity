@@ -156,6 +156,9 @@ namespace DeNelle.Editor.Regression
                 string raid = Read("Assets/_Modules/Village/Troops/RaidDeployController.cs");
                 string host = Read("Assets/_Modules/HUD/Kit/HudAreasHost.cs");
 
+                Require(raid, "HudLayoutBands.RaidTroopTrayBand", failures,
+                    "[raid-thumb-band] RaidDeployController does not seat the troop tray on " +
+                    "HudLayoutBands.RaidTroopTrayBand (WO-1885: troops at the TOP).");
                 Require(raid, "HudLayoutBands.StackAboveThumbBand", failures,
                     "[shared-seam] RaidDeployController no longer derives its band from " +
                     "HudLayoutBands — a Village-local Y literal is exactly how the bar came to " +
