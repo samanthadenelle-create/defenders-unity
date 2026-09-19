@@ -18,7 +18,7 @@
 //   PRE-HUB  (GameState only, before the first BeginLoop, applied at Title):
 //            newgame, onboarded, wave, resources, buildings, troops, ff.*, tun.*
 //   POST-HUB (scene-bound objects, applied once the hub scene + hero exist):
-//            level, raid, town
+//            level, raid, town, vigil, circle, ballot, ceremony
 // A build launched with NO scenario extras behaves EXACTLY like a plain
 // TESTER_BUILD boot: one FlowTrace.Once saying nothing was requested, no
 // state written (acceptance #8).
@@ -38,9 +38,12 @@
 using System;
 using System.Collections.Generic;
 using DeNelle.Core;
+using DeNelle.Core.Circle;
 using DeNelle.Core.Diagnostics;
 using DeNelle.Core.Ops;
 using DeNelle.Core.State;
+using DeNelle.Core.UI;
+using DeNelle.HUD;
 using DeNelle.Village;
 using DeNelle.Village.World.Camps;
 using UnityEngine;
@@ -70,6 +73,10 @@ namespace DeNelle.DevTools
             public string Town;
             public string Resources;
             public string Buildings;
+            public string Circle;
+            public string Vigil;
+            public string Ceremony;
+            public string Ballot;
             public readonly Dictionary<string, int> Ff = new Dictionary<string, int>();
             public readonly Dictionary<string, int> Tun = new Dictionary<string, int>();
             public bool Any;
@@ -78,6 +85,8 @@ namespace DeNelle.DevTools
         private static Request s_parked;
         private static bool s_preHubDone;
         private static bool s_postHubDone;
+        private static bool s_extrasDone;
+        private static bool s_extrasRetrySpawned;
         private static bool s_subscribed;
         private static int s_sceneLoadAttempts;
         private static bool s_waveLateWarned;
@@ -105,7 +114,7 @@ namespace DeNelle.DevTools
             TryApplyPreHub();
             TryApplyPostHub();
             MaybeUnsubscribe();
-            if (s_sceneLoadAttempts >= MaxSceneLoadAttempts && (!s_preHubDone || !s_postHubDone))
+            if (s_sceneLoadAttempts >= MaxSceneLoadAttempts && (!s_preHubDone || !s_postHubDone || !s_extrasDone))
             {
                 if (!s_preHubDone)
                     FlowTrace.Warn(Tag, "[Flow:DevScenario] pre-hub phase never found a live GameStateService " +
@@ -113,6 +122,9 @@ namespace DeNelle.DevTools
                 if (!s_postHubDone)
                     FlowTrace.Warn(Tag, "[Flow:DevScenario] post-hub phase never found a live HeroProgression " +
                         "after " + s_sceneLoadAttempts + " scene load(s) — giving up rather than retrying forever.");
+                if (s_postHubDone && !s_extrasDone)
+                    FlowTrace.Warn(Tag, "[Flow:DevScenario] circle/ceremony extras never found a registered " +
+                        "panel after " + s_sceneLoadAttempts + " scene load(s) — giving up rather than retrying forever.");
                 MaybeUnsubscribe(force: true);
             }
         }
@@ -120,7 +132,7 @@ namespace DeNelle.DevTools
         private static void MaybeUnsubscribe(bool force = false)
         {
             if (!s_subscribed) return;
-            if (force || (s_preHubDone && s_postHubDone))
+            if (force || (s_preHubDone && s_postHubDone && s_extrasDone))
             {
                 SceneManager.sceneLoaded -= OnSceneLoaded;
                 s_subscribed = false;
@@ -154,6 +166,10 @@ namespace DeNelle.DevTools
                 req.Town       = ReadString("town");
                 req.Resources  = ReadString("resources");
                 req.Buildings  = ReadString("buildings");
+                req.Circle     = ReadString("circle");
+                req.Vigil      = ReadString("vigil");
+                req.Ceremony   = ReadString("ceremony");
+                req.Ballot     = ReadString("ballot");
 
                 // ff.<key> / ff.tun.<key> — the key NAME is caller-chosen, so these two ride
                 // the extras Bundle's own keySet rather than a fixed name list.
@@ -181,6 +197,8 @@ namespace DeNelle.DevTools
             req.Any = !string.IsNullOrEmpty(req.NewGame) || req.HasOnboarded || req.HasLevel || req.HasWave ||
                       req.HasTroops || !string.IsNullOrEmpty(req.Raid) || !string.IsNullOrEmpty(req.Town) ||
                       !string.IsNullOrEmpty(req.Resources) || !string.IsNullOrEmpty(req.Buildings) ||
+                      !string.IsNullOrEmpty(req.Circle) || !string.IsNullOrEmpty(req.Vigil) ||
+                      !string.IsNullOrEmpty(req.Ceremony) || !string.IsNullOrEmpty(req.Ballot) ||
                       req.Ff.Count > 0 || req.Tun.Count > 0;
             return req;
         }
@@ -221,33 +239,101 @@ namespace DeNelle.DevTools
         // ---------------------------------------------------------------
         private static void TryApplyPostHub()
         {
-            if (s_postHubDone || s_parked == null) return;
-            var hero = UnityEngine.Object.FindAnyObjectByType<HeroProgression>();
-            if (hero == null) return; // hub not loaded yet — retried on the next scene load
+            if (s_parked == null) return;
+            if (s_postHubDone && s_extrasDone) return;
 
-            // §1.4 trap: if the hub is loading BEFORE GameStateService ever went live pre-hub,
-            // a `wave=` write here would land after WaveManager has already resolved its resume
-            // seed — a silent no-op. Warn by name instead of applying quietly; still apply the
-            // rest of the pre-hub set (better late than never for everything except wave).
-            if (!s_preHubDone)
+            if (!s_postHubDone)
             {
-                if (s_parked.HasWave && !s_waveLateWarned)
+                var hero = UnityEngine.Object.FindAnyObjectByType<HeroProgression>();
+                if (hero == null) return; // hub not loaded yet — retried on the next scene load
+
+                // §1.4 trap: if the hub is loading BEFORE GameStateService ever went live pre-hub,
+                // a `wave=` write here would land after WaveManager has already resolved its resume
+                // seed — a silent no-op. Warn by name instead of applying quietly; still apply the
+                // rest of the pre-hub set (better late than never for everything except wave).
+                if (!s_preHubDone)
                 {
-                    s_waveLateWarned = true;
-                    FlowTrace.Warn(Tag, "[Flow:DevScenario] wave=" + s_parked.Wave + " arrived AFTER the hub " +
-                        "loaded with no GameStateService seen pre-hub — WaveManager.ResolveStartWave's resume " +
-                        "seed is already resolved by now, so writing BestWave here would be a silent no-op " +
-                        "(WO-1775 §1.4). Skipped, not applied.");
+                    if (s_parked.HasWave && !s_waveLateWarned)
+                    {
+                        s_waveLateWarned = true;
+                        FlowTrace.Warn(Tag, "[Flow:DevScenario] wave=" + s_parked.Wave + " arrived AFTER the hub " +
+                            "loaded with no GameStateService seen pre-hub — WaveManager.ResolveStartWave's resume " +
+                            "seed is already resolved by now, so writing BestWave here would be a silent no-op " +
+                            "(WO-1775 §1.4). Skipped, not applied.");
+                    }
+                    TryApplyPreHub();
+                    if (!s_preHubDone) return;
                 }
-                TryApplyPreHub();
-                if (!s_preHubDone) return;
+
+                s_postHubDone = true;
+                var req = s_parked;
+                if (req.HasLevel) ApplyLevel(hero, req.Level);
+                if (!string.IsNullOrEmpty(req.Town)) ApplyTown(req.Town);
+                if (!string.IsNullOrEmpty(req.Raid)) ApplyRaid(req.Raid);
+                // Dressing does not need a HUD panel — apply with the hub, before Circle opens
+                // so the header fallback can see CurrentDressingTier on first paint.
+                if (!string.IsNullOrEmpty(req.Vigil)) ApplyVigil(req.Vigil);
             }
 
-            s_postHubDone = true;
+            TryApplyPostHubExtras();
+            EnsureExtrasRetry();
+        }
+
+        // Circle / ceremony extras need PanelRouter registration. CircleScreenPanelBootstrap
+        // and VigilCeremonyPanelBootstrap also run at AfterSceneLoad; order across assemblies
+        // is undefined, so a same-frame miss retries on Update until the panel exists.
+        private static void TryApplyPostHubExtras()
+        {
+            if (s_extrasDone || s_parked == null) return;
             var req = s_parked;
-            if (req.HasLevel) ApplyLevel(hero, req.Level);
-            if (!string.IsNullOrEmpty(req.Town)) ApplyTown(req.Town);
-            if (!string.IsNullOrEmpty(req.Raid)) ApplyRaid(req.Raid);
+            bool needCircle = !string.IsNullOrEmpty(req.Circle) || !string.IsNullOrEmpty(req.Ballot);
+            bool needCeremony = !string.IsNullOrEmpty(req.Ceremony);
+            if (!needCircle && !needCeremony)
+            {
+                s_extrasDone = true;
+                return;
+            }
+            if (needCircle && !PanelRouter.IsRegistered(PanelId.Circle)) return;
+            if (needCeremony && !PanelRouter.IsRegistered(PanelId.CeremonyOfVigil)) return;
+            if (needCircle) ApplyCircle(req.Circle, req.Ballot);
+            if (needCeremony) ApplyCeremony(req.Ceremony);
+            s_extrasDone = true;
+        }
+
+        private static void EnsureExtrasRetry()
+        {
+            if (s_extrasDone || s_extrasRetrySpawned || s_parked == null) return;
+            bool need = !string.IsNullOrEmpty(s_parked.Circle) ||
+                        !string.IsNullOrEmpty(s_parked.Ballot) ||
+                        !string.IsNullOrEmpty(s_parked.Ceremony);
+            if (!need) { s_extrasDone = true; return; }
+            s_extrasRetrySpawned = true;
+            var go = new GameObject("DevScenarioExtrasRetry");
+            UnityEngine.Object.DontDestroyOnLoad(go);
+            go.hideFlags = HideFlags.HideAndDontSave;
+            go.AddComponent<ExtrasRetry>();
+        }
+
+        private sealed class ExtrasRetry : MonoBehaviour
+        {
+            private int _frames;
+            private void Update()
+            {
+                _frames++;
+                TryApplyPostHubExtras();
+                MaybeUnsubscribe();
+                if (s_extrasDone || _frames > 300)
+                {
+                    if (!s_extrasDone)
+                    {
+                        FlowTrace.Warn(Tag, "[Flow:DevScenario] circle/ceremony extras never found a " +
+                            "registered panel after " + _frames + " frame(s) — giving up.");
+                        s_extrasDone = true;
+                        MaybeUnsubscribe();
+                    }
+                    Destroy(gameObject);
+                }
+            }
         }
 
         // ---------------------------------------------------------------
@@ -421,6 +507,119 @@ namespace DeNelle.DevTools
             UnityEngine.PlayerPrefs.SetInt(RemoteTunables.LocalPrefix + key, value);
             UnityEngine.PlayerPrefs.Save();
             FlowTrace.Step(Tag, "[Flow:DevScenario] " + RemoteTunables.LocalPrefix + key + " -> " + value);
+        }
+
+        private static void ApplyVigil(string word)
+        {
+            int tier = VigilCeremonyWords.TierForWord(word);
+            if (tier <= 0)
+            {
+                FlowTrace.Fail(Tag, "[Flow:DevScenario] REFUSED vigil='" + word +
+                    "' — not ember|flame|beacon|pyre|dawn. No dressing apply.");
+                return;
+            }
+            Guard.Try(Tag, "vigil dressing", () =>
+            {
+                VigilCeremonyLedger.Shared.SetDressing(tier);
+                FlowTrace.Step(Tag, "[Flow:DevScenario] vigil -> SetDressing(" + tier + ") " +
+                    VigilCeremonyWords.WordForTier(tier) + " (Heart dressing; vigil_weight untouched).");
+            });
+        }
+
+        private static void ApplyCircle(string circleToken, string ballotToken)
+        {
+            if (!string.IsNullOrEmpty(ballotToken) &&
+                !string.Equals(ballotToken, "open", StringComparison.OrdinalIgnoreCase))
+            {
+                FlowTrace.Fail(Tag, "[Flow:DevScenario] REFUSED ballot='" + ballotToken +
+                    "' — only 'open' is wired (opens the Ballots tab; votes still hit the server).");
+                ballotToken = null;
+            }
+
+            string tab = null;
+            bool openCircle = false;
+            if (!string.IsNullOrEmpty(circleToken))
+            {
+                if (string.Equals(circleToken, "unsigned", StringComparison.OrdinalIgnoreCase))
+                {
+                    openCircle = true;
+                }
+                else if (string.Equals(circleToken, "members", StringComparison.OrdinalIgnoreCase))
+                {
+                    openCircle = true;
+                    tab = "members";
+                }
+                else if (string.Equals(circleToken, "ballots", StringComparison.OrdinalIgnoreCase))
+                {
+                    openCircle = true;
+                    tab = "ballots";
+                }
+                else if (string.Equals(circleToken, "vault", StringComparison.OrdinalIgnoreCase))
+                {
+                    openCircle = true;
+                    tab = "vault";
+                }
+                else
+                {
+                    FlowTrace.Fail(Tag, "[Flow:DevScenario] REFUSED circle='" + circleToken +
+                        "' — not unsigned|members|ballots|vault. No apply.");
+                }
+            }
+            else if (string.Equals(ballotToken, "open", StringComparison.OrdinalIgnoreCase))
+            {
+                openCircle = true;
+                tab = "ballots";
+            }
+
+            if (!openCircle) return;
+
+            Guard.Try(Tag, "circle/ballot extras", () =>
+            {
+                if (!string.IsNullOrEmpty(tab))
+                {
+                    PlayerPrefs.SetString(CircleScreenPanel.QaSelectTabPrefKey, tab);
+                    PlayerPrefs.Save();
+                }
+                bool opened = PanelRouter.Open(PanelId.Circle);
+                if (!opened)
+                    FlowTrace.Warn(Tag, "[Flow:DevScenario] circle extra requested but PanelId.Circle did not open.");
+                else
+                    FlowTrace.Step(Tag, "[Flow:DevScenario] circle -> PanelId.Circle" +
+                        (tab != null ? " tab=" + tab : " (unsigned / default tab)"));
+            });
+        }
+
+        private static void ApplyCeremony(string value)
+        {
+            if (!string.Equals(value, "play", StringComparison.OrdinalIgnoreCase))
+            {
+                FlowTrace.Fail(Tag, "[Flow:DevScenario] REFUSED ceremony='" + value +
+                    "' — only 'play' is wired (canned plate once; not a live epoch).");
+                return;
+            }
+            Guard.Try(Tag, "ceremony=play", () =>
+            {
+                var ledger = VigilCeremonyLedger.Shared;
+                int tier = ledger.CurrentDressingTier;
+                if (tier <= 0) tier = 1;
+                var payload = new VigilCeremonyPayload
+                {
+                    EpochIndex = 0,
+                    Tier = tier,
+                    Word = VigilCeremonyWords.WordForTier(tier),
+                    Line = VigilCeremonyWords.LineForTier(tier),
+                    CircleName = "Elarion",
+                    Passed = true
+                };
+                ledger.RememberPayload(payload);
+                ledger.SetDressing(tier);
+                bool opened = PanelRouter.Open(PanelId.CeremonyOfVigil, "play");
+                if (!opened)
+                    FlowTrace.Warn(Tag, "[Flow:DevScenario] ceremony=play PanelId.CeremonyOfVigil did not open.");
+                else
+                    FlowTrace.Step(Tag, "[Flow:DevScenario] ceremony=play canned plate once tier=" +
+                        tier + " word=" + payload.Word + " epoch=0 (not a live epoch).");
+            });
         }
     }
 }

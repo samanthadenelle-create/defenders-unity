@@ -68,6 +68,7 @@ namespace DeNelle.HUD
         private bool _disposed;
         private bool _inCircle;
         private bool _fetched;
+        private bool _cannedLock;
 
         /// <summary>The ONE thing UiMvvmConformanceRegression.cs:74-78 looks for.</summary>
         public static VigilCeremonyVM CreateDefault(Action onClose)
@@ -208,8 +209,36 @@ namespace DeNelle.HUD
             _ledger?.RememberEpoch(EpochIndex);
         }
 
+        /// <summary>
+        /// QA canned plate: apply a remembered payload without fetching a live ballot.
+        /// EpochIndex 0 is not a live epoch; ShouldAutoPlay stays false so Consider
+        /// cannot loop this as a settled epoch.
+        /// </summary>
+        public void ApplyCannedPayload(VigilCeremonyPayload payload)
+        {
+            if (payload == null || !payload.HasContent)
+            {
+                FlowTrace.Warn(Sys, "canned ceremony payload empty — no plate.");
+                return;
+            }
+            _cannedLock = true;
+            _fetched = true;
+            _inCircle = true;
+            IsReplay = false;
+            ApplyPayload(payload, 0);
+            ShouldAutoPlay = false;
+            Raise();
+        }
+
         private void ApplyBallot(string body, long status)
         {
+            if (_cannedLock)
+            {
+                FlowTrace.Step(Sys, "canned ceremony payload locked — ignoring live ballot (not a live epoch lie).");
+                _fetched = true;
+                Raise();
+                return;
+            }
             _fetched = true;
             ShouldAutoPlay = false;
             HasPayload = false;

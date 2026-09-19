@@ -1774,8 +1774,12 @@ namespace DeNelle.HUD
             VigilDegraded = degraded;
             VigilWeightText = FormatNumber(weight);
             VigilDegradedKey = degraded ? "circle.vigil.degraded" : string.Empty;
-            VigilWordKey = VigilCeremonyWords.WordKeyForTier(
-                VigilCeremonyWords.HighestUnlockedTier(weight));
+            int unlocked = VigilCeremonyWords.HighestUnlockedTier(weight);
+            // dotr.vigil sets Heart dressing without faking vigil_weight. When the
+            // live weight unlocks nothing, the header word follows the dressing tier.
+            if (unlocked <= 0)
+                unlocked = VigilCeremonyLedger.Shared.CurrentDressingTier;
+            VigilWordKey = VigilCeremonyWords.WordKeyForTier(unlocked);
         }
 
         /// <summary>Two decimals at most, invariant — never a locale-formatted float on the wire.</summary>

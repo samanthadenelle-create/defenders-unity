@@ -71,6 +71,12 @@ namespace DeNelle.HUD
         /// </summary>
         public const string ChatNotSignedInKey = "clanChat.notSignedIn";
 
+        /// <summary>
+        /// One-shot Circle tab select. WRITTEN only by DevScenarioIntent under QA_SCENARIO_BUILD.
+        /// Open() consumes it. Not a locale key.
+        /// </summary>
+        public const string QaSelectTabPrefKey = "vigil.qa.circleTab";
+
         private const string KeyCircleWord = "common.circle";
         private const string KeyHeaderCode = "circle.header.code";
         private const string KeyHeaderRole = "circle.header.role";
@@ -187,11 +193,16 @@ namespace DeNelle.HUD
         /// <summary>Build and show the screen.</summary>
         public void Open()
         {
-            if (IsOpen) return;
+            if (IsOpen)
+            {
+                ConsumeQaSelectTab();
+                return;
+            }
             using var _ = FlowTrace.Enter(Sys, "CircleScreenPanel.Open");
 
             _vm = CircleScreenVM.CreateDefault(Close);
             _vm.Changed += Repaint;
+            ConsumeQaSelectTab();
 
             _modal = ElarionUiKit.BuildObsidianModal("CircleScreenUI", _vm.Title,
                 new Vector2(0.12f, 0.06f), new Vector2(0.88f, 0.95f), Close,
@@ -242,6 +253,47 @@ namespace DeNelle.HUD
             _statusLine = null;
             ForgetFormWidgets();
             _builtShape = int.MinValue;
+        }
+
+        /// <summary>
+        /// Consume the one-shot QA tab pref written by DevScenarioIntent. Safe before the
+        /// modal exists: SelectTab raises Changed and Repaint no-ops while !IsOpen.
+        /// </summary>
+        private void ConsumeQaSelectTab()
+        {
+            if (_vm == null) return;
+            string raw = null;
+            try { raw = PlayerPrefs.GetString(QaSelectTabPrefKey, string.Empty); }
+            catch (Exception ex)
+            {
+                FlowTrace.Warn(Sys, "QaSelectTab PlayerPrefs read threw " + ex.GetType().Name);
+                return;
+            }
+            if (string.IsNullOrEmpty(raw)) return;
+            try
+            {
+                PlayerPrefs.DeleteKey(QaSelectTabPrefKey);
+                PlayerPrefs.Save();
+            }
+            catch (Exception ex)
+            {
+                FlowTrace.Warn(Sys, "QaSelectTab PlayerPrefs delete threw " + ex.GetType().Name);
+            }
+
+            CircleScreenVM.CircleTab tab;
+            if (string.Equals(raw, "members", StringComparison.OrdinalIgnoreCase))
+                tab = CircleScreenVM.CircleTab.Members;
+            else if (string.Equals(raw, "ballots", StringComparison.OrdinalIgnoreCase))
+                tab = CircleScreenVM.CircleTab.Ballots;
+            else if (string.Equals(raw, "vault", StringComparison.OrdinalIgnoreCase))
+                tab = CircleScreenVM.CircleTab.Vault;
+            else
+            {
+                FlowTrace.Warn(Sys, "QaSelectTab ignored unknown value.");
+                return;
+            }
+            _vm.SelectTab(tab);
+            FlowTrace.Step(Sys, "QaSelectTab -> " + tab);
         }
 
         private void ForgetFormWidgets()

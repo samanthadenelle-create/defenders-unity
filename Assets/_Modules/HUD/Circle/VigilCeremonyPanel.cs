@@ -34,6 +34,7 @@ namespace DeNelle.HUD
         private bool _plateShown;
         private bool _replay;
         private Action _sequenceHandler;
+        private static bool s_playOnce;
 
         private TextMeshProUGUI _held;
         private TextMeshProUGUI _word;
@@ -67,9 +68,51 @@ namespace DeNelle.HUD
 
         public void OpenWithContext(string context)
         {
+            if (string.Equals(context, "play", StringComparison.OrdinalIgnoreCase))
+            {
+                OpenCannedPlay();
+                return;
+            }
             bool replay = string.Equals(context, "replay", StringComparison.OrdinalIgnoreCase)
                           || string.IsNullOrEmpty(context);
             OpenInternal(replay);
+        }
+
+        /// <summary>
+        /// QA extra dotr.ceremony=play: open the last ledger payload once, no live fetch.
+        /// </summary>
+        private void OpenCannedPlay()
+        {
+            if (s_playOnce)
+            {
+                FlowTrace.Step(Sys, "canned ceremony plate already shown this process — not looping.");
+                return;
+            }
+            if (RaidBlocks())
+            {
+                FlowTrace.Warn(Sys, "CeremonyOfVigil play refused — never blocks a raid.");
+                return;
+            }
+            if (IsOpen) Close();
+            EnsureVm();
+            var payload = _vm.Ledger != null ? _vm.Ledger.LastPayload : null;
+            if (payload == null || !payload.HasContent)
+            {
+                FlowTrace.Warn(Sys, "canned ceremony play has no payload — not opening the plate.");
+                return;
+            }
+            _vm.ApplyCannedPayload(payload);
+            if (!_vm.HasPayload)
+            {
+                FlowTrace.Warn(Sys, "canned ceremony apply produced no payload — not opening.");
+                return;
+            }
+            OpenInternal(replay: false);
+            if (IsOpen)
+            {
+                s_playOnce = true;
+                _vm.RememberIfNeeded();
+            }
         }
 
         /// <summary>
