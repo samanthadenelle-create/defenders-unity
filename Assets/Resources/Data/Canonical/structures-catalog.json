@@ -693,7 +693,7 @@
     "corrected": true,
     "manual": true,
     "euler": [
-     90,
+     0,
      0,
      0
     ],
@@ -703,7 +703,7 @@
      0
     ],
     "scale": 1,
-    "note": "owner 2026-08-19 upright X=90 flagged fixed  -  applied PRE-fit via StructureFactory.OptsFor LocalRotation (GROK_BRIEF). Was [0,0,0] after 2026-08-18 axis-bake pass that discarded the imported root rotation. WO-1250: bakedTwins Blacksmith_Weapons_Storefront MOVED to row 'forge' (Weaponsmith). CORRECTED 2026-09-14 (WO-1710): this row is the Crafting Station and it DOES have a bake now - the owner's 2026-09-13 authored castle root 'Crafting' - see repo.bakedTwins above."
+    "note": "2026-09-19 owner: crafting station lands on its side in WebGL. Art is Structures/ShopAndCrafting = Synty/ShopAndCrafting.prefab (KayKit, already Y-up). The 2026-08-19 X=90 was for the old FBX identity-reset; it now lays the Synty mesh on its side (WO-1713 class). Zeroed. manual stays true."
    }
   },
   {
