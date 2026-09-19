@@ -46,13 +46,14 @@ After every code-touching lane: `python tools/gate_brace.py` on the `.cs` list, 
 
 ## MORNING REPORT (leave this filled)
 
-- HEAD: `git log -1 --oneline`
-- Branch / ahead: `git status -sb`
-- WO-1875 status line (quote it)
-- WO-1874 status line (quote it)
-- Compile log + marker
-- Regression log + marker
-- APK stamp if built, or "not built because …"
-- What a waking owner should film first
-- What is still fake vs real
-- Token/lane count: how many Grok implementers ran
+- HEAD: `5b1b14c45 QA_SCENARIO: dotr.circle/vigil/ceremony/ballot extras (overnight MUST 3).` (local `dev` also has `d044c8b31` MUST 2 header word; `2a6f75f49` WO-1874/1875 gated). **Not pushed.**
+- Branch / ahead: `dev...origin/dev [ahead 10]`. Dirty leftover: `ProjectSettings/ProjectSettings.asset` (AAB/WebGL/APK target flips — not committed).
+- WO-1875 status line: `**Status:** IMPLEMENTED - gated 2026-09-19 COMPILE_GATE_OK (Builds/c1875d.log) + REGRESSION_OK 585/585 (Builds/r1875c.log). Owner felt-closes on a tester APK: fresh boot Circle SIGN IN Members.`
+- WO-1874 status line: `**Status:** IMPLEMENTED - gated 2026-09-19 COMPILE_GATE_OK (Builds/c1875d.log) + REGRESSION_OK 585/585 (Builds/r1875c.log).`
+- Compile log + marker: latest combined tree `Builds/cg1875f.log` → `COMPILE_GATE_OK :: scripts compiled clean` (MUST 3). Prior: `c1875d.log` / `cg1875e.log` also `COMPILE_GATE_OK`.
+- Regression log + marker: latest `Builds/r1875f.log` → `REGRESSION_OK 585/585 suites -- 585 green, 0 red, 0 skipped`. Prior: `r1875c.log` and `r1875e.log` same 585/585. First red this night (`reg1875.log` 582/585) was locale tables + Play policy + a WO-1881 4000-char tutorial-reach window; loc rebuild + 8000-char pin cleared it.
+- APK stamp: **tester APK built.** `Builds/overnight-apk-status.txt`: `APK_OK 2026-09-19T01:36:28 path=D:\eoa\Builds\Android\DefendersOfTheRealm.apk size=447MB`. Fresh `Builds/apk-build.log`: `[AndroidBuild] SUCCEEDED — 446 MB on-disk (468479287 bytes)`. `Builds/r2-parity.log`: `R2_PARITY_OK targets=Android,StandaloneWindows64,WebGL objects=207`. Sideload yourself — **not adb-installed on Seeker.** Not `-Scenario` (no `QA_SCENARIO_BUILD` on this artifact).
+- What a waking owner should film first: install `Builds/Android/DefendersOfTheRealm.apk` (447MB, mtime 01:36). Fresh boot → Circle Chat → Circle door → **SIGN IN** (gold) → Members. In-Circle header should show **Ember / Flame / Beacon / Pyre / Dawn** (large Gold), not a raw number as the only tell. Ballots tab: votable ballot if the server has one; Vault tab: N-of-M readout if a vault is bound. Ceremony plate only if a live epoch actually passed and is unseen.
+- What is still fake vs real: **Real** — SIGN IN mint (`clan/me` GET true), live Circle reads, ballot votes hit the server, header word from `HighestUnlockedTier(vigil_weight)`, Heart dressing from the ledger, ceremony auto-play from a real passed unseen epoch. **Fake / not on this APK** — `dotr.*` scenario extras (`circle/vigil/ceremony/ballot`) compile only under `QA_SCENARIO_BUILD`; this tester APK does **not** carry them. Canned `ceremony=play` (epoch 0, CircleName "Elarion") is QA-only. Dressing-tier header fallback only when live weight unlocks nothing. No Squads tx UI. No `ff.stakedemo`.
+- Token/lane count: **1 Grok implementer** this wake (MUST 3 QA extras). Lead did the MUST 2 header-word HUD edit (overnight "one small HUD edit" exception) and all gates/commits/APK. 1874/1875 implementers had already handed back before this wake. **Off-script Unity contention:** `google-play-aab-build.ps1` (`AAB_BUILD_UNPROVEN`) and `build-webgl.ps1` held the editor and delayed the tester APK; neither was this night's MUST.
+- FLAG (do not spend the night): KEY_FACTS / CANON are days stale, as parked.
