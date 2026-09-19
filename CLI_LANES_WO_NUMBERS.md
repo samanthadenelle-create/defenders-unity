@@ -189,7 +189,12 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-ninth pass): main line next free = **1877**.
+> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-eightieth pass): main line next free = **1878**.
+> *(CLI minted **WO-1877** 2026-09-18 — Armorer shop shows each armor's 2D plate (title+stats+art),
+> not the generic shield glyph; body never mesh-swaps (owner: armor is code-only so similar
+> pieces can share a silhouette with better 2D versions). Bumped 1877 -> 1878 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-ninth pass): main line next free = **1877**.
 > *(CLI minted **WO-1876** 2026-09-18 — captured town reuses the castle HUD/build stack; retire
 > OwnedTownPanel as the rebuild door (owner: "reusing the logic we have and simply passing if its
 > castle or players base"). Bumped 1876 -> 1877 in this SAME edit.)*
