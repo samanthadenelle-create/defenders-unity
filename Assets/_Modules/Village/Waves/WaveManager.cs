@@ -2041,6 +2041,15 @@ namespace DeNelle.Village
         /// <summary>Begins spawning wave <paramref name="waveId"/>'s enemies.</summary>
         private void StartWave(int waveId)
         {
+            // WO-1880: countdown-zero and ForceBeginNextWave can both fire in one
+            // frame. A second enter would double-emit wave_started (starters > completers
+            // inverted: starters < completers is the other bug). Already-Active is a no-op.
+            if (_phase == WavePhase.Active)
+            {
+                FlowTrace.Warn("Wave", $"StartWave({waveId}) ignored — already Active (no second wave_started)");
+                return;
+            }
+
             WaveDef wave = _schedule.Find(waveId);
             if (wave == null)
             {
