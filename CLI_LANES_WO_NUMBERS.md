@@ -189,7 +189,12 @@
 > Filed at `WorkOrders/ManageRedesign/`. It SUPERSEDES WO-1427 and WO-1428. Never renumber a 2000 ticket into
 > the main line.)*
 >
-> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-seventh pass): main line next free = **1875**.
+> ## RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-eighth pass): main line next free = **1876**.
+> *(CLI minted **WO-1875** 2026-09-18 20:35 - the Circle screen is dead without a wallet session: every
+> read is non-minting and boot never signs, so a fresh session reads "Could not reach the server".
+> Bumped 1875 -> 1876 in this SAME edit.)*
+>
+> ### superseded: RECONCILED 2026-09-18 (CLI, two-hundred-and-seventy-seventh pass): main line next free = **1875**.
 > *(CLI minted **WO-1873** (global + Circle chat rooms) and **WO-1874** (the Ceremony of Vigil upon the
 > epoch, SPEC) 2026-09-18 16:40 from the owner's words. Bumped 1873 -> 1875 in this SAME edit.)*
 >
